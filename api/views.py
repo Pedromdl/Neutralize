@@ -4,11 +4,16 @@ from rest_framework.decorators import action
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Max, OuterRef, Subquery
-from .models import Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao
+from datetime import timedelta
+import calendar
+from .models import (
+    Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao,
+    Evento, Sessao
+)
 from .serializers import (
     UsuárioSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
-    CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, PreAvaliacaoSerializer, AnamneseSerializer, 
-    PastaSerializer, SecaoSerializer, OrientacaoSerializer
+    CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, PreAvaliacaoSerializer, AnamneseSerializer,
+    PastaSerializer, SecaoSerializer, OrientacaoSerializer, EventoSerializer, SessaoSerializer
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -315,3 +320,64 @@ def exportar_avaliacao_docx(request, pk):
     response['Content-Disposition'] = f'attachment; filename="{titulo}.docx"'
 
     return response
+
+class EventoViewSet(viewsets.ModelViewSet):
+    queryset = Evento.objects.all()
+    serializer_class = EventoSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['paciente']  # permite filtro por paciente
+
+    def create(self, request, *args, **kwargs):
+        dados = request.data
+        repetir = dados.get("repetir", False)
+        frequencia = dados.get("frequencia", "nenhuma")
+        repeticoes = int(dados.get("repeticoes") or 0)
+
+        # Criação do evento principal
+        serializer = self.get_serializer(data=dados)
+        serializer.is_valid(raise_exception=True)
+        evento_principal = serializer.save()
+
+        # Gerar eventos futuros, se necessário
+        if repetir and frequencia != "nenhuma" and repeticoes > 0:
+            data_base = evento_principal.data
+            for i in range(1, repeticoes):
+                nova_data = self.calcular_proxima_data(data_base, frequencia, i)
+                novo_evento = Evento.objects.create(
+                    paciente=evento_principal.paciente,
+                    tipo=evento_principal.tipo,
+                    status=evento_principal.status,
+                    data=nova_data,
+                    hora_inicio=evento_principal.hora_inicio,
+                    hora_fim=evento_principal.hora_fim,
+                    responsavel=evento_principal.responsavel,
+                    repetir=False,
+                    frequencia="nenhuma",
+                    evento_pai=evento_principal
+                )
+
+        return Response(EventoSerializer(evento_principal).data, status=status.HTTP_201_CREATED)
+
+    def calcular_proxima_data(self, data_inicial, frequencia, i):
+        if frequencia == "diario":
+            return data_inicial + timedelta(days=i)
+        elif frequencia == "semanal":
+            return data_inicial + timedelta(weeks=i)
+        elif frequencia == "mensal":
+            # Ajuste simples para meses futuros
+            mes = data_inicial.month - 1 + i
+            ano = data_inicial.year + mes // 12
+            mes = mes % 12 + 1
+            dia = min(data_inicial.day, calendar.monthrange(ano, mes)[1])
+            return data_inicial.replace(year=ano, month=mes, day=dia)
+        return data_inicial
+    
+class SessaoViewSet(viewsets.ModelViewSet):
+    queryset = Sessao.objects.all()
+    serializer_class = SessaoSerializer
+
+    def get_queryset(self):
+        paciente_id = self.request.query_params.get("paciente")
+        if paciente_id:
+            return Sessao.objects.filter(paciente_id=paciente_id)
+        return Sessao.objects.all()  # Retorna tudo se não filtrar

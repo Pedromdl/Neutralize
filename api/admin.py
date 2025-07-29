@@ -2,7 +2,7 @@ from django.contrib import admin
 
 # Register your models here.
 from .models import (Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta,
-                     Secao, Orientacao)
+                     Secao, Orientacao, Evento, Sessao)
 
 @admin.register(Usuário)
 class UsuárioAdmin(admin.ModelAdmin):
@@ -77,3 +77,10 @@ class TesteDorAdmin(admin.ModelAdmin):
             except CategoriaTeste.DoesNotExist:
                 kwargs["queryset"] = TodosTestes.objects.none()  # vazio se não existir
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+admin.site.register(Evento)
+@admin.register(Sessao)
+class SessaoAdmin(admin.ModelAdmin):
+    list_display = ('paciente', 'data', 'titulo', 'descricao')
+    search_fields = ('paciente__nome', 'titulo')
+    list_filter = ('paciente__nome', 'data')

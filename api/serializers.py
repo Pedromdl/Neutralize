@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao
-
+from .models import ( Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese,
+                      Pasta, Secao, Orientacao, Evento, Sessao)
 
 class UsuárioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -72,3 +72,15 @@ class PastaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pasta
         fields = ['id', 'paciente', 'nome', 'secoes']
+
+class EventoSerializer(serializers.ModelSerializer):
+    paciente_nome = serializers.CharField(source='paciente.nome', read_only=True)  # nome do paciente vindo do related
+
+    class Meta:
+        model = Evento
+        fields = '__all__'
+
+class SessaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sessao
+        fields = '__all__'

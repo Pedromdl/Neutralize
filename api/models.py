@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 # Create your models here.
 class Usuário(models.Model):
@@ -123,3 +125,38 @@ class Orientacao(models.Model):
     repeticoes = models.CharField(max_length=50)
     descricao = models.TextField(blank=True)
     video_url = models.URLField()
+
+class Evento(models.Model):
+    FREQUENCIA_CHOICES = [
+        ("nenhuma", "Nenhuma"),
+        ("diario", "Diário"),
+        ("semanal", "Semanal"),
+        ("mensal", "Mensal"),
+    ]
+
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, null=True, blank=True, related_name='eventos')
+    tipo = models.CharField(max_length=50)  # Ex: Consulta, Treino
+    status = models.CharField(max_length=50)  # Ex: Confirmado, Realizado
+    data = models.DateField()
+    hora_inicio = models.TimeField()
+    hora_fim = models.TimeField()
+    responsavel = models.CharField(max_length=100)
+
+    # Recorrência
+    repetir = models.BooleanField(default=False)
+    frequencia = models.CharField(max_length=20, choices=FREQUENCIA_CHOICES, default="nenhuma")
+    repeticoes = models.PositiveIntegerField(blank=True, null=True)  # quantas vezes repetir
+
+    evento_pai = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='ocorrencias')
+
+    def __str__(self):
+        return f"{self.tipo} - {self.paciente.nome} ({self.data})"
+
+class Sessao(models.Model):
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='sessoes')
+    data = models.DateField()
+    titulo = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+
+    def __str__(self):
+        return f'{self.paciente} - {self.titulo} ({self.data})'

@@ -1,9 +1,11 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
+
+
 from .views import (
-    UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, TesteFuncaoViewSet, 
-    TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, PastaViewSet, 
-    SecaoViewSet, OrientacaoViewSet
+    UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, TesteFuncaoViewSet,
+    TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, PastaViewSet,
+    SecaoViewSet, OrientacaoViewSet, EventoViewSet, SessaoViewSet
 )
 
 router = DefaultRouter()
@@ -18,6 +20,9 @@ router.register(r'anamnese', AnamneseViewSet, basename='anamnese')
 router.register(r'pastas', PastaViewSet)
 router.register(r'secoes', SecaoViewSet)
 router.register(r'orientacoes', OrientacaoViewSet)
+router.register(r'eventos', EventoViewSet)
+router.register(r'sessoes', SessaoViewSet, basename='sessao')
+
 
 
 urlpatterns = [
@@ -30,7 +35,5 @@ from .views import exportar_avaliacao_docx
 urlpatterns += [
     path('anamnese/<int:pk>/exportar-docx/', exportar_avaliacao_docx, name='exportar-docx'),
 ]
-
-
 
 urlpatterns += router.urls
