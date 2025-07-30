@@ -155,7 +155,7 @@ class Evento(models.Model):
 class Sessao(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='sessoes')
     data = models.DateField()
-    titulo = models.CharField(max_length=255)
+    titulo = models.CharField(blank=True, null=True, max_length=255)
     descricao = models.TextField(blank=True)
 
     def __str__(self):
