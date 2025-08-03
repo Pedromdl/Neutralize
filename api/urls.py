@@ -3,7 +3,7 @@ from django.urls import path
 
 
 from .views import (
-    UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, TesteFuncaoViewSet,
+    UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, EstabilidadeViewSet, TesteFuncaoViewSet,
     TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, PastaViewSet,
     SecaoViewSet, OrientacaoViewSet, EventoViewSet, SessaoViewSet
 )
@@ -12,6 +12,7 @@ router = DefaultRouter()
 router.register(r'usuarios', UsuárioViewSet)
 router.register(r'forca', ForcaMuscularViewSet)
 router.register(r'mobilidade', MobilidadeViewSet)
+router.register(r'estabilidade', EstabilidadeViewSet)
 router.register(r'testefuncao', TesteFuncaoViewSet)
 router.register(r'testedor', TesteDorViewSet, basename='teste-dor')
 router.register(r'testes', TodosTestesViewSet, basename='todos-testes')

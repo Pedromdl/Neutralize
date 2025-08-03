@@ -7,11 +7,11 @@ from django.db.models import Max, OuterRef, Subquery
 from datetime import timedelta
 import calendar
 from .models import (
-    Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao,
+    Usuário, Estabilidade, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao,
     Evento, Sessao
 )
 from .serializers import (
-    UsuárioSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
+    UsuárioSerializer, EstabilidadeSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, PreAvaliacaoSerializer, AnamneseSerializer,
     PastaSerializer, SecaoSerializer, OrientacaoSerializer, EventoSerializer, SessaoSerializer
 )
@@ -105,6 +105,46 @@ class MobilidadeViewSet(viewsets.ModelViewSet):
         )
         return Response(datas)
 
+class EstabilidadeViewSet(viewsets.ModelViewSet):
+    queryset = Estabilidade.objects.all()
+    serializer_class = EstabilidadeSerializer
+
+    def get_queryset(self):
+        paciente_id = self.request.query_params.get('paciente')
+        data = self.request.query_params.get('data_avaliacao')
+
+        if not paciente_id:
+            return Estabilidade.objects.none()
+
+        if data:
+            return Estabilidade.objects.filter(
+                paciente_id=paciente_id,
+                data_avaliacao=data
+            ).order_by('movimento_estabilidade')
+
+        latest_date_subquery = Estabilidade.objects.filter(
+            paciente_id=paciente_id,
+            movimento_estabilidade=OuterRef('movimento_estabilidade')
+        ).order_by('-data_avaliacao').values('data_avaliacao')[:1]
+
+        return Estabilidade.objects.filter(
+            paciente_id=paciente_id,
+            data_avaliacao=Subquery(latest_date_subquery)
+        ).order_by('movimento_estabilidade')
+
+    @action(detail=False, methods=["get"])
+    def datas(self, request):
+        paciente_id = request.query_params.get('paciente')
+        if not paciente_id:
+            return Response([], status=400)
+
+        datas = (
+            Estabilidade.objects.filter(paciente_id=paciente_id)
+            .values_list('data_avaliacao', flat=True)
+            .distinct()
+            .order_by('-data_avaliacao')
+        )
+        return Response(datas)
 
 
 class CategoriaTesteViewSet(viewsets.ModelViewSet):
@@ -340,12 +380,14 @@ class EventoViewSet(viewsets.ModelViewSet):
         frequencia = dados.get("frequencia", "nenhuma")
         repeticoes = int(dados.get("repeticoes") or 0)
 
-        # Criação do evento principal
+        # Evento principal
         serializer = self.get_serializer(data=dados)
         serializer.is_valid(raise_exception=True)
         evento_principal = serializer.save()
 
-        # Gerar eventos futuros, se necessário
+        eventos_criados = [evento_principal]
+
+        # Eventos repetidos
         if repetir and frequencia != "nenhuma" and repeticoes > 0:
             data_base = evento_principal.data
             for i in range(1, repeticoes):
@@ -362,8 +404,12 @@ class EventoViewSet(viewsets.ModelViewSet):
                     frequencia="nenhuma",
                     evento_pai=evento_principal
                 )
+                eventos_criados.append(novo_evento)
 
-        return Response(EventoSerializer(evento_principal).data, status=status.HTTP_201_CREATED)
+        return Response(
+            EventoSerializer(eventos_criados, many=True).data,
+            status=status.HTTP_201_CREATED
+        )
 
     def calcular_proxima_data(self, data_inicial, frequencia, i):
         if frequencia == "diario":

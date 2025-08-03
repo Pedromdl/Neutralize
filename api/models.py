@@ -69,7 +69,26 @@ class ForcaMuscular(models.Model):
             
     def __str__(self):
         return f"{self.paciente} - {self.data_avaliacao} - {self.movimento_forca}"
-        
+    
+class Estabilidade(models.Model):
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdeestabilidade')
+    movimento_estabilidade = models.ForeignKey(TodosTestes, on_delete=models.CASCADE, related_name='estabilidades', null=True, blank=True, verbose_name="Movimento")  # Teste pré-definido
+    data_avaliacao = models.DateField(verbose_name="Data")
+    lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
+    lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
+    resultado_unico = models.CharField(max_length=100, blank=True, null=True, verbose_name="Resultado")
+
+    observacao = models.TextField(blank=True, verbose_name="Observações")
+
+    class Meta:
+            verbose_name = "Estabilidade"
+            verbose_name_plural = "Estabilidades"
+            ordering = ['-data_avaliacao']
+            
+    def __str__(self):
+        nome_teste = self.movimento_estabilidade.nome if self.movimento_estabilidade else "Sem teste"
+        return f"{self.paciente} - {self.data_avaliacao} - {nome_teste}"
+
 class TesteFuncao(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdetestes')
     teste = models.ForeignKey(TodosTestes, on_delete=models.CASCADE)  # Agora os testes são pré-definidos
@@ -169,7 +188,11 @@ class Evento(models.Model):
     evento_pai = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='ocorrencias')
 
     def __str__(self):
-        return f"{self.tipo} - {self.paciente.nome} ({self.data})"
+        tipo = self.tipo if self.tipo else "Sem tipo"
+        paciente = self.paciente.nome if self.paciente else "Sem paciente"
+        data = self.data if self.data else "Sem data"
+        return f"{tipo} - {paciente} ({data})"
+
 
 # Modelo de Registros de Sessão
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ( Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese,
+from .models import ( Usuário, ForcaMuscular, Mobilidade, Estabilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese,
                       Pasta, Secao, Orientacao, Evento, Sessao)
 
 class UsuárioSerializer(serializers.ModelSerializer):
@@ -19,6 +19,11 @@ class MobilidadeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Mobilidade
+        fields = '__all__'
+
+class EstabilidadeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Estabilidade
         fields = '__all__'
 
 class CategoriaTesteSerializer(serializers.ModelSerializer):
