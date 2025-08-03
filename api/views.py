@@ -410,6 +410,43 @@ class EventoViewSet(viewsets.ModelViewSet):
             EventoSerializer(eventos_criados, many=True).data,
             status=status.HTTP_201_CREATED
         )
+    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()  # evento principal
+        dados = request.data
+
+        repetir = dados.get("repetir", False)
+        frequencia = dados.get("frequencia", "nenhuma")
+        repeticoes = int(dados.get("repeticoes") or 0)
+
+        # Atualiza o evento principal
+        serializer = self.get_serializer(instance, data=dados, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        evento_atualizado = serializer.save()
+
+        # Remove as ocorrências antigas vinculadas
+        evento_atualizado.ocorrencias.all().delete()
+
+        # Se precisa criar novas recorrências
+        if repetir and frequencia != "nenhuma" and repeticoes > 0:
+            data_base = evento_atualizado.data
+            for i in range(1, repeticoes):
+                nova_data = self.calcular_proxima_data(data_base, frequencia, i)
+                Evento.objects.create(
+                    paciente=evento_atualizado.paciente,
+                    tipo=evento_atualizado.tipo,
+                    status=evento_atualizado.status,
+                    data=nova_data,
+                    hora_inicio=evento_atualizado.hora_inicio,
+                    hora_fim=evento_atualizado.hora_fim,
+                    responsavel=evento_atualizado.responsavel,
+                    repetir=False,
+                    frequencia="nenhuma",
+                    evento_pai=evento_atualizado
+                )
+
+        return Response(self.get_serializer(evento_atualizado).data, status=status.HTTP_200_OK)
 
     def calcular_proxima_data(self, data_inicial, frequencia, i):
         if frequencia == "diario":
