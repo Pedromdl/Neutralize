@@ -8,11 +8,15 @@ class UsuárioSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ForcaMuscularSerializer(serializers.ModelSerializer):
+    movimento_forca_nome = serializers.CharField(source='movimento_forca.nome', read_only=True)
+
     class Meta:
         model = ForcaMuscular
         fields = '__all__'
 
 class MobilidadeSerializer(serializers.ModelSerializer):
+    nome_teste = serializers.CharField(source='nome.nome', read_only=True)  # <- pega o nome do FK
+
     class Meta:
         model = Mobilidade
         fields = '__all__'
@@ -25,7 +29,7 @@ class CategoriaTesteSerializer(serializers.ModelSerializer):
 class TodosTestesSerializer(serializers.ModelSerializer):
     class Meta:
         model = TodosTestes
-        fields = ['id', 'nome']  # campos do seu modelo TodosTestes
+        fields = ['id', 'nome', 'categoria']  # campos do seu modelo TodosTestes
 
 class TesteFuncaoSerializer(serializers.ModelSerializer):
     teste = serializers.PrimaryKeyRelatedField(queryset=TodosTestes.objects.all())

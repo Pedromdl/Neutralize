@@ -40,13 +40,13 @@ class ForcaMuscularViewSet(viewsets.ModelViewSet):
 
         latest_date_subquery = ForcaMuscular.objects.filter(
             paciente_id=paciente_id,
-            musculatura=OuterRef('musculatura')
+            movimento_forca=OuterRef('movimento_forca')
         ).order_by('-data_avaliacao').values('data_avaliacao')[:1]
 
         return ForcaMuscular.objects.filter(
             paciente_id=paciente_id,
             data_avaliacao=Subquery(latest_date_subquery)
-        ).order_by('musculatura')
+        ).order_by('movimento_forca')
 
     @action(detail=False, methods=["get"])
     def datas(self, request):
@@ -123,6 +123,13 @@ class TodosTestesViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(categoria__nome__iexact=categoria)
 
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        is_many = isinstance(request.data, list)
+        serializer = self.get_serializer(data=request.data, many=is_many)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TesteFuncaoViewSet(viewsets.ModelViewSet):
@@ -264,7 +271,7 @@ class DatasDisponiveisAPIView(APIView):
         except Exception as e:
             return Response({'erro': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class PreAvaliacaoViewSet(viewsets.ReadOnlyModelViewSet):
+class PreAvaliacaoViewSet(viewsets.ModelViewSet):
     queryset = PreAvaliacao.objects.all()
     serializer_class = PreAvaliacaoSerializer
 

@@ -3,6 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 # Create your models here.
+# Modelos de Usuário
 class Usuário(models.Model):
     nome = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
@@ -12,37 +13,10 @@ class Usuário(models.Model):
 
     def __str__(self):
         return self.nome
-
-class Mobilidade(models.Model):
-    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='mobilidades')
-    nome = models.CharField(max_length=100, verbose_name="Mobilidade")  # Campo obrigatório
-    data_avaliacao = models.DateField(verbose_name="Data")
-    lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
-    lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
-    observacao = models.TextField(blank=True, verbose_name="Observações")
-
-    class Meta:
-        ordering = ['-data_avaliacao']
-
-    def __str__(self):
-        return f"{self.nome} - {self.data_avaliacao}"
     
-class ForcaMuscular(models.Model):
-    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdeforcamuscular')
-    musculatura = models.CharField(max_length=100, verbose_name="Musculatura")
-    data_avaliacao = models.DateField(verbose_name="Data")
-    lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
-    lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
-    observacao = models.TextField(blank=True, verbose_name="Observações")
-
-    class Meta:
-            verbose_name = "Força Muscular"
-            verbose_name_plural = "Forças Musculares"
-            ordering = ['-data_avaliacao']
-            
-    def __str__(self):
-        return f"{self.paciente} - {self.data_avaliacao} - {self.musculatura}"
+# Modelos de Dados
     
+
 class CategoriaTeste(models.Model):
     """Tabela que contém todos os testes disponíveis"""
     nome = models.CharField(max_length=100, unique=True)
@@ -52,6 +26,7 @@ class CategoriaTeste(models.Model):
 
     def __str__(self):  
         return self.nome
+
 
 class TodosTestes(models.Model):
     """Tabela que contém todos os testes disponíveis"""
@@ -64,6 +39,37 @@ class TodosTestes(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.categoria.nome if self.categoria else 'Sem categoria'})"
 
+
+class Mobilidade(models.Model):
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='mobilidades')
+    nome = models.ForeignKey(TodosTestes, on_delete=models.CASCADE, related_name='mobilidades', null=True, blank=True)  # Teste pré-definido
+    data_avaliacao = models.DateField(verbose_name="Data")
+    lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
+    lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
+    observacao = models.TextField(null=True, blank=True, verbose_name="Observações")
+
+    class Meta:
+        ordering = ['-data_avaliacao']
+
+    def __str__(self):
+        return f"{self.nome} - {self.data_avaliacao}"
+    
+class ForcaMuscular(models.Model):
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdeforcamuscular')
+    movimento_forca = models.ForeignKey(TodosTestes, on_delete=models.CASCADE, related_name='forcas_musculares', null=True, blank=True, verbose_name="Movimento")  # Teste pré-definido
+    data_avaliacao = models.DateField(verbose_name="Data")
+    lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
+    lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
+    observacao = models.TextField(blank=True, verbose_name="Observações")
+
+    class Meta:
+            verbose_name = "Força Muscular"
+            verbose_name_plural = "Forças Musculares"
+            ordering = ['-data_avaliacao']
+            
+    def __str__(self):
+        return f"{self.paciente} - {self.data_avaliacao} - {self.movimento_forca}"
+        
 class TesteFuncao(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdetestes')
     teste = models.ForeignKey(TodosTestes, on_delete=models.CASCADE)  # Agora os testes são pré-definidos
@@ -80,6 +86,8 @@ class TesteFuncao(models.Model):
     def __str__(self):
         return f"{self.paciente} - {self.data_avaliacao} - {self.teste}"
     
+
+
 class TesteDor(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='dadosdeteste_dor')
     teste = models.ForeignKey(TodosTestes, on_delete=models.CASCADE)  # Agora os testes são pré-definidos
@@ -95,12 +103,16 @@ class TesteDor(models.Model):
     def __str__(self):
         return f"{self.paciente} - {self.data_avaliacao} - {self.teste} - {self.observacao}"
     
+# Modelos de Avaliações e Históricos Clínicos
+
 class PreAvaliacao(models.Model):
     titulo = models.CharField(max_length=200)
     texto = models.TextField()
 
     def __str__(self):
         return self.titulo
+
+
 
 class Anamnese(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE)  # relacionamento com paciente
@@ -109,6 +121,9 @@ class Anamnese(models.Model):
 
     def __str__(self):
         return f"Avaliação do paciente {self.paciente.nome} em {self.data_avaliacao}"
+
+# Modelo de Orientações Domiciliares
+
 
 class Pasta(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE)  # relacionamento com paciente
@@ -125,6 +140,10 @@ class Orientacao(models.Model):
     repeticoes = models.CharField(max_length=50)
     descricao = models.TextField(blank=True)
     video_url = models.URLField()
+
+
+# Modelo de Evento
+# Representa eventos como agendas, consultas
 
 class Evento(models.Model):
     FREQUENCIA_CHOICES = [
@@ -151,6 +170,8 @@ class Evento(models.Model):
 
     def __str__(self):
         return f"{self.tipo} - {self.paciente.nome} ({self.data})"
+
+# Modelo de Registros de Sessão
 
 class Sessao(models.Model):
     paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='sessoes')

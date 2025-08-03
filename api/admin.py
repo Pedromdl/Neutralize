@@ -6,18 +6,19 @@ from .models import (Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosT
 
 @admin.register(Usuário)
 class UsuárioAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'data_de_nascimento',)
+    list_display = ('id', 'nome', 'data_de_nascimento',)
 
 @admin.register(Mobilidade)
 class MobilidadeAdmin(admin.ModelAdmin):
-    list_display = ('paciente', 'nome', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
+    list_display = ('paciente', 'nome', 'data_avaliacao', 'lado_esquerdo', 'lado_direito')
     search_fields = ('paciente__nome', 'nome')
     list_filter = ('paciente__nome', 'data_avaliacao')
+    ordering = ('data_avaliacao',)
 
 @admin.register(ForcaMuscular)
 class ForcaMuscularAdmin(admin.ModelAdmin):
-    list_display = ('paciente', 'musculatura', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
-    search_fields = ('paciente__nome', 'musculatura')
+    list_display = ('paciente', 'movimento_forca', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
+    search_fields = ('paciente__nome', 'movimento_forca')
     list_filter = ('paciente__nome', 'data_avaliacao')
 
 @admin.register(CategoriaTeste)
