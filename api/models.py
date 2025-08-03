@@ -77,7 +77,6 @@ class Estabilidade(models.Model):
     lado_esquerdo = models.CharField(max_length=100, verbose_name="Lado Esquerdo")
     lado_direito = models.CharField(max_length=100, verbose_name="Lado Direito")
     resultado_unico = models.CharField(max_length=100, blank=True, null=True, verbose_name="Resultado")
-
     observacao = models.TextField(blank=True, verbose_name="Observações")
 
     class Meta:

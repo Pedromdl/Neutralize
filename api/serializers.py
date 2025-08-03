@@ -22,6 +22,8 @@ class MobilidadeSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class EstabilidadeSerializer(serializers.ModelSerializer):
+    movimento_estabilidade_nome = serializers.CharField(source='movimento_estabilidade.nome', read_only=True)
+    
     class Meta:
         model = Estabilidade
         fields = '__all__'

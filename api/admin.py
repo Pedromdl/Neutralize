@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import (Usuário, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta,
+from .models import (Usuário, ForcaMuscular, Mobilidade, Estabilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta,
                      Secao, Orientacao, Evento, Sessao)
 
 @admin.register(Usuário)
@@ -20,6 +20,21 @@ class ForcaMuscularAdmin(admin.ModelAdmin):
     list_display = ('paciente', 'movimento_forca', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
     search_fields = ('paciente__nome', 'movimento_forca')
     list_filter = ('paciente__nome', 'data_avaliacao')
+
+@admin.register(Estabilidade)
+class EstabilidadeAdmin(admin.ModelAdmin):
+    list_display = ('paciente', 'movimento_estabilidade', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
+    search_fields = ('paciente__nome', 'movimento_estabilidade')
+    list_filter = ('paciente__nome', 'data_avaliacao')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "movimento_estabilidade":
+            try:
+                categoria_estabilidade = CategoriaTeste.objects.get(nome__iexact="Testes de Estabilidade")
+                kwargs["queryset"] = TodosTestes.objects.filter(categoria=categoria_estabilidade)
+            except CategoriaTeste.DoesNotExist:
+                kwargs["queryset"] = TodosTestes.objects.none()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 @admin.register(CategoriaTeste)
 class CategoriaTesteAdmin(admin.ModelAdmin):
