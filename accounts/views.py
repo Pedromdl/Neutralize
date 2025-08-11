@@ -22,7 +22,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 class UserListView(generics.ListAPIView):
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAdminUser]
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('id')  # Adicione um order_by aqui
 
 class GoogleAuthView(APIView):
 
