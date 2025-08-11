@@ -6,6 +6,7 @@ from datetime import timedelta
 # Modelos de Usuário
 class Usuário(models.Model):
     nome = models.CharField(max_length=100)
+    cpf = models.CharField(max_length=14, unique=True, blank=True, null=True)  # Formato: 000.000.000-00
     email = models.EmailField(unique=True)
     telefone = models.CharField(max_length=15, blank=True, null=True)
     endereço = models.CharField(max_length=255, blank=True, null=True)
