@@ -15,7 +15,7 @@ urlpatterns = [
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
 
     # Login social Google (allauth)
-    path('auth/', include('allauth.urls')),
+    # path('auth/', include('allauth.urls')),
     path("api/auth/", include("accounts.urls")),
 
 ]

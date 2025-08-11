@@ -53,10 +53,10 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 
     # Allauth
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
+    #'allauth',
+    #'allauth.account',
+    #'allauth.socialaccount',
+    #'allauth.socialaccount.providers.google',
 
     # Django REST
     'rest_framework',
@@ -82,7 +82,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
+    # 'allauth.account.auth_backends.AuthenticationBackend',
 )
 
 REST_FRAMEWORK = {
@@ -125,7 +125,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # <== Adicione esta linha
+    # 'allauth.account.middleware.AccountMiddleware',  # <== Adicione esta linha
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
