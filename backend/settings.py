@@ -74,11 +74,11 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
+#ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+#ACCOUNT_USERNAME_REQUIRED = False
+#ACCOUNT_EMAIL_REQUIRED = True
+#ACCOUNT_AUTHENTICATION_METHOD = 'email'
+#ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
@@ -95,22 +95,22 @@ REST_FRAMEWORK = {
 
 SITE_ID = 1
 
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
+#ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+#ACCOUNT_USERNAME_REQUIRED = False
+#ACCOUNT_EMAIL_REQUIRED = True
+#ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': ['profile', 'email'],
-        'AUTH_PARAMS': {'access_type': 'online'},
+#SOCIALACCOUNT_PROVIDERS = {
+    #'google': {
+        #'SCOPE': ['profile', 'email'],
+        #'AUTH_PARAMS': {'access_type': 'online'},
         # 'APP': {
         #     'client_id': config('SOCIAL_AUTH_GOOGLE_CLIENT_ID'),
         #     'secret': config('SOCIAL_AUTH_GOOGLE_SECRET'),
         #     'key': ''
         # },
-    }
-}
+    #}
+#}
 
 # Opcional: configure o tempo de expiração do token
 SIMPLE_JWT = {
