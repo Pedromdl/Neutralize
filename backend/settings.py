@@ -63,8 +63,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
     # dj-rest-auth
-    'dj_rest_auth',
-    'dj_rest_auth.registration',
+    #'dj_rest_auth',
+    #'dj_rest_auth.registration',
 
     # Apps do projeto
     'corsheaders',
