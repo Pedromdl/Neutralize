@@ -64,10 +64,20 @@ class PastaAdmin(admin.ModelAdmin):
     list_display = ('id','nome', 'paciente')
     search_fields = ('nome',)
 
-admin.site.register(Secao)
-admin.site.register(Orientacao)
+class OrientacaoInline(admin.TabularInline):
+    model = Orientacao
+    extra = 0  # Quantos campos extras aparecerão para adicionar novo exercício
+    fields = ('titulo', 'series', 'repeticoes', 'video_url')  # Colunas que deseja mostrar
 
+@admin.register(Secao)
+class SecaoAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'pasta')  # Colunas da seção
+    inlines = [OrientacaoInline]  # Mostra orientações dentro da seção
 
+@admin.register(Orientacao)
+class OrientacaoAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'secao', 'series', 'repeticoes')
+    
 @admin.register(TesteFuncao)
 class TesteFuncaoAdmin(admin.ModelAdmin):
     list_display = ('paciente', 'teste', 'data_avaliacao', 'lado_esquerdo', 'lado_direito', 'observacao')
