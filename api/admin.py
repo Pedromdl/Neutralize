@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import (Usuário, ForcaMuscular, Mobilidade, Estabilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta,
-                     Secao, Orientacao, Evento, Sessao)
+from .models import (Usuário, ForcaMuscular, Mobilidade, Estabilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese,
+                     Evento, Sessao)
 
 @admin.register(Usuário)
 class UsuárioAdmin(admin.ModelAdmin):
@@ -58,25 +58,6 @@ class AnamneseAdmin(admin.ModelAdmin):
     list_display = ('paciente', 'data_avaliacao')
     search_fields = ('paciente__nome',)
     list_filter = ('data_avaliacao',)
-
-@admin.register(Pasta)
-class PastaAdmin(admin.ModelAdmin):
-    list_display = ('id','nome', 'paciente')
-    search_fields = ('nome',)
-
-class OrientacaoInline(admin.TabularInline):
-    model = Orientacao
-    extra = 0  # Quantos campos extras aparecerão para adicionar novo exercício
-    fields = ('titulo', 'series', 'repeticoes', 'video_url')  # Colunas que deseja mostrar
-
-@admin.register(Secao)
-class SecaoAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'pasta')  # Colunas da seção
-    inlines = [OrientacaoInline]  # Mostra orientações dentro da seção
-
-@admin.register(Orientacao)
-class OrientacaoAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'secao', 'series', 'repeticoes')
     
 @admin.register(TesteFuncao)
 class TesteFuncaoAdmin(admin.ModelAdmin):

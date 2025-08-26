@@ -9,6 +9,8 @@ urlpatterns = [
     # Suas APIs
     path('api/accounts/', include('accounts.urls')),
     path('api/', include('api.urls')),
+    path('api/orientacoes/', include('orientacoes.urls')),
+
 
     # Autenticação padrão (dj-rest-auth)
     #path('auth/', include('dj_rest_auth.urls')),

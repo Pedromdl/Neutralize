@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
+
 
 # Create your models here.
 # Modelos de Usuário
@@ -11,6 +13,7 @@ class Usuário(models.Model):
     telefone = models.CharField(max_length=15, blank=True, null=True)
     endereço = models.CharField(max_length=255, blank=True, null=True)
     data_de_nascimento = models.DateField(blank=True, null=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="perfil_api")
 
     def __str__(self):
         return self.nome
@@ -144,46 +147,6 @@ class Anamnese(models.Model):
 
     def __str__(self):
         return f"Avaliação do paciente {self.paciente.nome} em {self.data_avaliacao}"
-
-# Modelo de Orientações Domiciliares
-
-
-class Pasta(models.Model):
-    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE)  # relacionamento com paciente
-    nome = models.CharField(max_length=255)
-    
-    def __str__(self):
-        return self.nome
-
-    
-class Secao(models.Model):
-    pasta = models.ForeignKey(Pasta, on_delete=models.CASCADE, related_name='secoes')
-    titulo = models.CharField(max_length=255)
-
-    class Meta:
-        verbose_name = "Seção"
-        verbose_name_plural = "Seções"
-
-    def __str__(self):
-        return self.titulo
-
-
-class Orientacao(models.Model):
-    secao = models.ForeignKey(Secao, on_delete=models.CASCADE, related_name='orientacoes')
-    titulo = models.CharField(max_length=255)
-    series = models.CharField(max_length=50)
-    repeticoes = models.CharField(max_length=50)
-    descricao = models.TextField(blank=True)
-    video_url = models.URLField(blank=True)  # URL do vídeo de orientação
-
-    class Meta:
-        verbose_name = "Orientação"
-        verbose_name_plural = "Orientações"
-
-    def __str__(self):
-        return self.titulo
-    
-
 
 # Modelo de Evento
 # Representa eventos como agendas, consultas

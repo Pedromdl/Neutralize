@@ -4,8 +4,8 @@ from django.urls import path
 
 from .views import (
     UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, EstabilidadeViewSet, TesteFuncaoViewSet,
-    TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, PastaViewSet,
-    SecaoViewSet, OrientacaoViewSet, EventoViewSet, SessaoViewSet
+    TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, 
+    EventoViewSet, SessaoViewSet
 )
 
 router = DefaultRouter()
@@ -18,9 +18,6 @@ router.register(r'testedor', TesteDorViewSet, basename='teste-dor')
 router.register(r'testes', TodosTestesViewSet, basename='todos-testes')
 router.register(r'preavaliacao', PreAvaliacaoViewSet, basename='pre-avaliacao')
 router.register(r'anamnese', AnamneseViewSet, basename='anamnese')
-router.register(r'pastas', PastaViewSet)
-router.register(r'secoes', SecaoViewSet)
-router.register(r'orientacoes', OrientacaoViewSet)
 router.register(r'eventos', EventoViewSet)
 router.register(r'sessoes', SessaoViewSet, basename='sessao')
 

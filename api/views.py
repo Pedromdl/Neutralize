@@ -7,17 +7,16 @@ from django.db.models import Max, OuterRef, Subquery
 from datetime import timedelta
 import calendar
 from .models import (
-    Usuário, Estabilidade, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Pasta, Secao, Orientacao,
-    Evento, Sessao
+    Usuário, Estabilidade, ForcaMuscular, Mobilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, Evento, 
+    Sessao
 )
 from .serializers import (
     UsuárioSerializer, EstabilidadeSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, PreAvaliacaoSerializer, AnamneseSerializer,
-    PastaSerializer, SecaoSerializer, OrientacaoSerializer, EventoSerializer, SessaoSerializer
+    EventoSerializer, SessaoSerializer
 )
 from rest_framework.response import Response
 from rest_framework import status
-
 
 
 class UsuárioViewSet(viewsets.ModelViewSet):
@@ -320,24 +319,6 @@ class AnamneseViewSet(viewsets.ModelViewSet):
     serializer_class = AnamneseSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['paciente']  # <- permite filtrar por ?paciente=ID
-
-class PastaViewSet(viewsets.ModelViewSet):
-    serializer_class = PastaSerializer
-    queryset = Pasta.objects.all()  # 👈 isso é necessário para DRF funcionar corretamente
-
-    def get_queryset(self):
-        paciente_id = self.request.query_params.get('paciente')
-        if paciente_id:
-            return Pasta.objects.filter(paciente__id=paciente_id)
-        return self.queryset
-
-class SecaoViewSet(viewsets.ModelViewSet):
-    queryset = Secao.objects.all()
-    serializer_class = SecaoSerializer
-
-class OrientacaoViewSet(viewsets.ModelViewSet):
-    queryset = Orientacao.objects.all()
-    serializer_class = OrientacaoSerializer
 
 from html2docx import html2docx
 from django.http import HttpResponse
