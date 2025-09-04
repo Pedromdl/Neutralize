@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsProfissional, IsPaciente
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Max, OuterRef, Subquery
 from datetime import timedelta
@@ -22,6 +24,8 @@ from rest_framework import status
 class UsuárioViewSet(viewsets.ModelViewSet):
     queryset = Usuário.objects.all()
     serializer_class = UsuárioSerializer
+    permission_classes = [IsAuthenticated, IsProfissional]  # apenas profissionais podem acessar
+
 
 class ForcaMuscularViewSet(viewsets.ModelViewSet):
     queryset = ForcaMuscular.objects.all()

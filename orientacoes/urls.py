@@ -13,4 +13,6 @@ router.register(r'treinosexecutados', TreinoExecutadoViewSet, basename='treinoex
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('api/orientacoes/', include(router.urls)),
+
 ]

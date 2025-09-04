@@ -1,13 +1,13 @@
 from django.shortcuts import render
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
 # 🔹 Models
 from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, SerieRealizada, ExercicioExecutado, ExercicioPrescrito
-
+from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
     PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
@@ -23,15 +23,20 @@ class PastaViewSet(viewsets.ModelViewSet):
     """
     serializer_class = PastaSerializer
     queryset = Pasta.objects.all()
-    filterset_fields = ['paciente']  # já permite filtrar por paciente
-
+    filterset_fields = ['paciente']
 
     def get_queryset(self):
-        # Filtra pastas por paciente se 'paciente' estiver nos query params
-        paciente_id = self.request.query_params.get('paciente')
-        if paciente_id:
-            return Pasta.objects.filter(paciente__id=paciente_id)
-        return self.queryset
+        user_id = self.request.query_params.get("paciente")  # vem do frontend (CustomUser.id)
+        if user_id:
+            try:
+                # 🔹 Pega o Usuário vinculado ao CustomUser informado
+                usuario = Usuário.objects.get(user_id=user_id)
+                return Pasta.objects.filter(paciente=usuario)
+            except Usuário.DoesNotExist:
+                return Pasta.objects.none()
+
+        return self.queryset.none()
+
 
 # =========================
 # Seções
@@ -52,6 +57,18 @@ class BancodeExercicioViewSet(viewsets.ModelViewSet):
     """
     queryset = BancodeExercicio.objects.all()
     serializer_class = BancodeExercicioSerializer
+
+    def create(self, request, *args, **kwargs):
+        # 🔹 Caso o frontend envie uma LISTA de objetos
+        if isinstance(request.data, list):
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+        # 🔹 Caso seja um OBJETO único
+        return super().create(request, *args, **kwargs)
 
 class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
     queryset = ExercicioPrescrito.objects.all()
@@ -78,14 +95,27 @@ class TreinoViewSet(viewsets.ModelViewSet):
         return queryset
 
 class TreinoExecutadoViewSet(viewsets.ModelViewSet):
-    queryset = TreinoExecutado.objects.all().select_related("treino", "paciente").prefetch_related("exercicios__series")
     serializer_class = TreinoExecutadoSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        paciente_id = self.request.query_params.get('paciente')
-        if paciente_id:
-            return super().get_queryset().filter(paciente__id=paciente_id)
-        return super().get_queryset()
+        user = self.request.user  # 🔹 CustomUser
+        return TreinoExecutado.objects.filter(paciente__user=user)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            paciente = Usuário.objects.get(user=request.user)
+        except Usuário.DoesNotExist:
+            return Response({'error': 'Usuário sem perfil de paciente.'}, status=400)
+
+        payload = request.data.copy()
+        payload['paciente'] = paciente.id
+
+        serializer = self.get_serializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=['post'])
     def finalizar(self, request, pk=None):
@@ -113,7 +143,6 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
                 continue
 
             try:
-                # Cria ExercicioExecutado
                 exercicio_executado = ExercicioExecutado.objects.create(
                     treino_executado=treino,
                     exercicio_id=exercicio_id,
@@ -123,7 +152,6 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
                 erros.append(f"Erro ao criar ExercicioExecutado {exercicio_id}: {str(e)}")
                 continue
 
-            # Valida e cria séries
             series_list = ex_data.get('series', [])
             if not series_list:
                 erros.append(f"Exercício {exercicio_id} sem séries.")
@@ -156,7 +184,6 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
 
         status_code = status.HTTP_200_OK if not erros else status.HTTP_400_BAD_REQUEST
         return Response(response_data, status=status_code)
-
 
 
 class SerieRealizadaViewSet(viewsets.ModelViewSet):

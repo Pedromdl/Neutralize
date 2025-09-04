@@ -31,4 +31,5 @@ class CustomUserSerializer(UserSerializer):
             'address',
             'phone',
             'birth_date',
+            'role',
         )

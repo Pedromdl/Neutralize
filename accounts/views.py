@@ -9,6 +9,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
 User = get_user_model()
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

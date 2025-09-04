@@ -32,7 +32,7 @@ class TreinoAdmin(admin.ModelAdmin):
 # 🔹 Admin da Execução de Treino (cada vez que o paciente faz o treino)
 @admin.register(TreinoExecutado)
 class TreinoExecutadoAdmin(admin.ModelAdmin):
-    list_display = ('treino', 'paciente', 'data', 'finalizado', 'tempo_total')
+    list_display = ('id', 'treino', 'paciente', 'data', 'finalizado', 'tempo_total')
     list_filter = ('finalizado', 'data', 'treino')
     inlines = [ExercicioExecutadoInline]
 
