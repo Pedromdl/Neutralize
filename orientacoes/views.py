@@ -18,25 +18,22 @@ from .serializers import (
 # Pastas
 # =========================
 class PastaViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para gerenciar Pastas de pacientes
-    """
     serializer_class = PastaSerializer
     queryset = Pasta.objects.all()
-    filterset_fields = ['paciente']
 
     def get_queryset(self):
-        user_id = self.request.query_params.get("paciente")  # vem do frontend (CustomUser.id)
-        if user_id:
-            try:
-                # 🔹 Pega o Usuário vinculado ao CustomUser informado
-                usuario = Usuário.objects.get(user_id=user_id)
-                return Pasta.objects.filter(paciente=usuario)
-            except Usuário.DoesNotExist:
-                return Pasta.objects.none()
+        # fluxo profissional: se query param 'paciente' estiver presente
+        paciente_param = self.request.query_params.get("paciente")
+        if paciente_param:
+            return Pasta.objects.filter(paciente_id=paciente_param)
 
-        return self.queryset.none()
+        # fluxo paciente: pega usuário logado
+        if hasattr(self.request.user, 'usuario'):
+            usuario = self.request.user.usuario
+            return Pasta.objects.filter(paciente=usuario)
 
+        # fluxo profissional acessando detalhe sem query param
+        return Pasta.objects.all()
 
 # =========================
 # Seções

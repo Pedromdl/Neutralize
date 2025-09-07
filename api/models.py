@@ -13,7 +13,7 @@ class Usuário(models.Model):
     telefone = models.CharField(max_length=15, blank=True, null=True)
     endereço = models.CharField(max_length=255, blank=True, null=True)
     data_de_nascimento = models.DateField(blank=True, null=True)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="perfil_api")
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="usuario")
 
     def __str__(self):
         return self.nome
