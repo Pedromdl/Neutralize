@@ -96,8 +96,17 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user  # 🔹 CustomUser
-        return TreinoExecutado.objects.filter(paciente__user=user)
+        user = self.request.user
+        queryset = TreinoExecutado.objects.filter(paciente__user=user)
+
+        # 🔹 Filtro opcional por exercício
+        exercicio_id = self.request.query_params.get("exercicio")
+        if exercicio_id:
+            queryset = queryset.filter(
+                exercicios__exercicio__id=exercicio_id
+            ).distinct()
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
         try:

@@ -28,7 +28,7 @@ class ExercicioPrescritoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ExercicioPrescrito
-        fields = ['id', 'treino', 'orientacao', 'orientacao_detalhes', 'series_planejadas', 'repeticoes_planejadas', 'carga_planejada']
+        fields = ['id', 'treino', 'orientacao', 'orientacao_detalhes', 'series_planejadas', 'repeticoes_planejadas', 'carga_planejada', 'observacao']
 
 
 class TreinoSerializer(serializers.ModelSerializer):

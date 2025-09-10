@@ -66,6 +66,8 @@ class ExercicioPrescrito(models.Model):
     series_planejadas = models.PositiveIntegerField(default=1)
     repeticoes_planejadas = models.PositiveIntegerField(default=0)
     carga_planejada = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    observacao = models.TextField(blank=True, null=True)  # ← novo campo
+
 
     def __str__(self):
         return f"{self.orientacao.titulo} - {self.treino}"

@@ -10,7 +10,7 @@ class SecaoInline(admin.TabularInline):
 class ExercicioPrescritoInline(admin.TabularInline):
     model = ExercicioPrescrito
     extra = 1
-    fields = ('orientacao', 'series_planejadas', 'repeticoes_planejadas', 'carga_planejada')
+    fields = ('orientacao', 'series_planejadas', 'repeticoes_planejadas', 'carga_planejada', 'observacao')
 
 # 🔹 Inline para visualizar Séries realizadas em uma execução de treino
 class SerieRealizadaInline(admin.TabularInline):
