@@ -132,6 +132,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",  # 🔹 Muda para INFO (por padrão vem WARNING)
+    },
+}
 
 CORS_ALLOW_ALL_ORIGINS = True  # Apenas para desenvolvimento
 

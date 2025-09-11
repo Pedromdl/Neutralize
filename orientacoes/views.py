@@ -11,7 +11,7 @@ from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
     PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
-    ExercicioPrescritoSerializer, TreinoExecutadoCreateSerializer
+    ExercicioPrescritoSerializer, EvolucaoExercicioSerializer
 )
 
 # =========================
@@ -91,20 +91,45 @@ class TreinoViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(secao_id=secao_id)
         return queryset
 
+import time
+import logging
+from django.db import connection
+from django.db.models import Max, F, Prefetch
+
+logger = logging.getLogger(__name__)
+
 class TreinoExecutadoViewSet(viewsets.ModelViewSet):
     serializer_class = TreinoExecutadoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        start = time.time()
+        response = super().list(request, *args, **kwargs)
+        duration = time.time() - start
+        logger.info(f"[VIEW] {request.path} levou {duration:.3f}s")
+        return response
+
     def get_queryset(self):
         user = self.request.user
+
+        # Base do queryset: treinos do paciente logado
         queryset = TreinoExecutado.objects.filter(paciente__user=user)
 
-        # 🔹 Filtro opcional por exercício
+        # 🔹 Pré-buscar exercícios e séries
         exercicio_id = self.request.query_params.get("exercicio")
         if exercicio_id:
-            queryset = queryset.filter(
-                exercicios__exercicio__id=exercicio_id
-            ).distinct()
+            # Prefetch apenas exercícios filtrados
+            exercicios_prefetch = Prefetch(
+                "exercicios",
+                queryset=ExercicioExecutado.objects.filter(exercicio_id=exercicio_id).prefetch_related("series"),
+            )
+        else:
+            exercicios_prefetch = Prefetch(
+                "exercicios",
+                queryset=ExercicioExecutado.objects.all().prefetch_related("series"),
+            )
+
+        queryset = queryset.prefetch_related(exercicios_prefetch)
 
         return queryset
 
@@ -130,14 +155,12 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
         if not treino.paciente:
             return Response({'error': 'TreinoExecutado sem paciente.'}, status=400)
 
-        # Atualiza treino
         treino.finalizado = True
         treino.tempo_total = request.data.get('tempo_total', treino.tempo_total)
         treino.data = request.data.get('data', treino.data)
         treino.save()
 
         series_data = request.data.get('series', [])
-
         if not series_data:
             return Response({'error': 'Nenhum exercício enviado.'}, status=400)
 
@@ -190,6 +213,53 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
 
         status_code = status.HTTP_200_OK if not erros else status.HTTP_400_BAD_REQUEST
         return Response(response_data, status=status_code)
+
+    # 🔹 Nova action para evolução
+    @action(detail=False, methods=['get'])
+    def evolucao(self, request):
+        user = request.user
+
+        # Prefetch: exercícios + séries
+        queryset = TreinoExecutado.objects.filter(paciente__user=user, finalizado=True).prefetch_related(
+            Prefetch(
+                'exercicios',
+                queryset=ExercicioExecutado.objects.prefetch_related('series', 'exercicio__orientacao_detalhes')
+            )
+        ).order_by('data')
+
+        evolucao = []
+
+        for treino in queryset:
+            treino_data = {
+                "id": treino.id,
+                "data": treino.data,
+                "tempo_total": treino.tempo_total,
+                "exercicios": []
+            }
+
+            for ex in treino.exercicios.all():
+                series = ex.series.all()
+                max_reps = max([s.repeticoes for s in series], default=0)
+                max_carga = max([float(s.carga) for s in series], default=0)
+
+                treino_data["exercicios"].append({
+                    "id": ex.id,
+                    "titulo": ex.exercicio.orientacao_detalhes.titulo,
+                    "max_repeticoes": max_reps,
+                    "max_carga": max_carga,
+                    "rpe": ex.rpe,
+                    "series": [
+                        {
+                            "numero": s.numero,
+                            "repeticoes": s.repeticoes,
+                            "carga": s.carga
+                        } for s in series
+                    ]
+                })
+
+            evolucao.append(treino_data)
+
+        return Response(evolucao, status=status.HTTP_200_OK)
 
 
 class SerieRealizadaViewSet(viewsets.ModelViewSet):

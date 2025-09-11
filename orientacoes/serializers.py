@@ -72,3 +72,9 @@ class TreinoExecutadoCreateSerializer(serializers.ModelSerializer):
         # 🔹 Só para debug: mostra os dados que chegam
         print("Dados recebidos no serializer:", data)
         return data
+    
+class EvolucaoExercicioSerializer(serializers.Serializer):
+    data = serializers.DateField()
+    repeticoes = serializers.IntegerField()
+    carga = serializers.FloatField()
+    rpe = serializers.FloatField(allow_null=True)
