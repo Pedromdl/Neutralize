@@ -62,19 +62,23 @@ class TreinoExecutadoSerializer(serializers.ModelSerializer):
         model = TreinoExecutado
         fields = ["id", "treino", "paciente", "finalizado", "tempo_total", "data", "exercicios"]
         
+class SerieGraficoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SerieRealizada
+        fields = ['numero', 'repeticoes', 'carga']  # apenas o que interessa
 
-class TreinoExecutadoCreateSerializer(serializers.ModelSerializer):
+class ExercicioGraficoSerializer(serializers.ModelSerializer):
+    series = SerieGraficoSerializer(many=True)
+
+    class Meta:
+        model = ExercicioExecutado
+        fields = ['id', 'exercicio', 'rpe', 'series']
+
+class TreinoGraficoSerializer(serializers.ModelSerializer):
+    exercicios = ExercicioGraficoSerializer(many=True)
+
     class Meta:
         model = TreinoExecutado
-        fields = ["treino", "paciente"]  # os campos obrigatórios para criar
+        fields = ['id', 'data', 'finalizado', 'exercicios']  # remove tempo_total
 
-    def validate(self, data):
-        # 🔹 Só para debug: mostra os dados que chegam
-        print("Dados recebidos no serializer:", data)
-        return data
     
-class EvolucaoExercicioSerializer(serializers.Serializer):
-    data = serializers.DateField()
-    repeticoes = serializers.IntegerField()
-    carga = serializers.FloatField()
-    rpe = serializers.FloatField(allow_null=True)
