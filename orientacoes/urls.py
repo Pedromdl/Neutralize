@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PastaViewSet, SecaoViewSet, BancodeExercicioViewSet, TreinoViewSet, TreinoExecutadoViewSet, ExercicioPrescritoViewSet
-
+from .views import (PastaViewSet, SecaoViewSet, BancodeExercicioViewSet, TreinoViewSet, TreinoExecutadoViewSet, ExercicioPrescritoViewSet,
+                     
+)
 router = DefaultRouter()
 router.register(r'pastas', PastaViewSet, basename='pasta')
 router.register(r'secoes', SecaoViewSet, basename='secao')

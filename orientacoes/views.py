@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from rest_framework import viewsets, permissions
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
@@ -13,28 +14,31 @@ from .serializers import (
     PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
     ExercicioPrescritoSerializer, TreinoGraficoSerializer
 )
+# =========================
+# Tela Inicial
+# =========================
 
+    
 # =========================
 # Pastas
 # =========================
 class PastaViewSet(viewsets.ModelViewSet):
     serializer_class = PastaSerializer
-    queryset = Pasta.objects.all()
 
     def get_queryset(self):
+        qs = Pasta.objects.all().prefetch_related("secoes")
         # fluxo profissional: se query param 'paciente' estiver presente
         paciente_param = self.request.query_params.get("paciente")
         if paciente_param:
-            return Pasta.objects.filter(paciente_id=paciente_param)
+            return qs.filter(paciente_id=paciente_param)
 
         # fluxo paciente: pega usuário logado
         if hasattr(self.request.user, 'usuario'):
             usuario = self.request.user.usuario
-            return Pasta.objects.filter(paciente=usuario)
+            return qs.filter(paciente=usuario)
 
         # fluxo profissional acessando detalhe sem query param
-        return Pasta.objects.all()
-
+        return qs
 # =========================
 # Seções
 # =========================

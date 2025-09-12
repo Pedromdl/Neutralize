@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django_filters',
+    'debug_toolbar',
+
 
 
     # Allauth
@@ -130,6 +132,12 @@ MIDDLEWARE = [
     # 'allauth.account.middleware.AccountMiddleware',  # <== Adicione esta linha
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+
+]
+
+INTERNAL_IPS = [
+    "127.0.0.1",
 ]
 
 LOGGING = {
