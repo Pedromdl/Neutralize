@@ -26,18 +26,17 @@ class PastaViewSet(viewsets.ModelViewSet):
     serializer_class = PastaSerializer
 
     def get_queryset(self):
-        qs = Pasta.objects.all().prefetch_related("secoes")
-        # fluxo profissional: se query param 'paciente' estiver presente
+        qs = Pasta.objects.all().prefetch_related(
+            "secoes__treinos__exercicios__orientacao"
+        )
         paciente_param = self.request.query_params.get("paciente")
         if paciente_param:
             return qs.filter(paciente_id=paciente_param)
 
-        # fluxo paciente: pega usuário logado
         if hasattr(self.request.user, 'usuario'):
             usuario = self.request.user.usuario
             return qs.filter(paciente=usuario)
 
-        # fluxo profissional acessando detalhe sem query param
         return qs
 # =========================
 # Seções

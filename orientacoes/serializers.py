@@ -8,11 +8,26 @@ class BancodeExercicioSerializer(serializers.ModelSerializer):
         fields = ["id", "titulo", "descricao", "video_url"]
 
 class SecaoSerializer(serializers.ModelSerializer):
-    orientacoes = BancodeExercicioSerializer(many=True, read_only=True)
+    orientacoes = serializers.SerializerMethodField()
 
     class Meta:
         model = Secao
         fields = ['id', 'titulo', 'pasta', 'orientacoes']
+
+    def get_orientacoes(self, obj):
+        # Aqui pegamos todos os exercícios da seção já pré-buscados
+        resultados = []
+        for treino in obj.treinos.all():
+            for exercicio in treino.exercicios.all():
+                resultados.append({
+                    "id": exercicio.orientacao.id,
+                    "titulo": exercicio.orientacao.titulo,
+                    "descricao": exercicio.orientacao.descricao,
+                    "video_url": exercicio.orientacao.video_url,
+                    "treino_id": treino.id,
+                    "treino_nome": treino.nome,
+                })
+        return resultados
 
 class PastaSerializer(serializers.ModelSerializer):
     secoes = SecaoSerializer(many=True, read_only=True)
