@@ -4,7 +4,7 @@ from rest_framework import viewsets, permissions
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 
 # 🔹 Models
 from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, SerieRealizada, ExercicioExecutado, ExercicioPrescrito
@@ -17,7 +17,22 @@ from .serializers import (
 # =========================
 # Tela Inicial
 # =========================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resumo_treinos(request):
+    user = request.user
+    treinos = TreinoExecutado.objects.filter(paciente__user=user, finalizado=True).order_by('data')
 
+    total = treinos.count()
+    ultimo = treinos.last()
+    ultimo_data = ultimo.data if ultimo else None
+
+    return Response({
+        "totalTreinosExecutados": total,
+        "ultimoTreino": {
+            "data": ultimo_data.strftime("%d/%m/%Y") if ultimo else "-"
+        }
+    })
     
 # =========================
 # Pastas
