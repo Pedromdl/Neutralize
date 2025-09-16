@@ -11,7 +11,7 @@ from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, Ser
 from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
-    PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
+    PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoListSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
     ExercicioPrescritoSerializer, TreinoGraficoSerializer
 )
 # =========================
@@ -100,7 +100,6 @@ class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
 # =========================
 class TreinoViewSet(viewsets.ModelViewSet):
     queryset = Treino.objects.all()
-    serializer_class = TreinoSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -109,12 +108,18 @@ class TreinoViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(secao_id=secao_id)
         return queryset
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TreinoListSerializer  # só id, nome, secao
+        return TreinoSerializer  # inclui exercicios
+
 import time
 import logging
 from django.db import connection
 from django.db.models import Max, F, Prefetch
 
 logger = logging.getLogger(__name__)
+
 class TreinoExecutadoViewSet(viewsets.ModelViewSet):
     serializer_class = TreinoExecutadoSerializer
     permission_classes = [permissions.IsAuthenticated]

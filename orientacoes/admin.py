@@ -20,7 +20,11 @@ class SerieRealizadaInline(admin.TabularInline):
 
 class ExercicioExecutadoInline(admin.TabularInline):
     model = ExercicioExecutado
-    extra = 1
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.exclude(series__isnull=True)  # Exclui ExerciciosExecutado sem séries
+
 
 # 🔹 Admin do Treino (template)
 @admin.register(Treino)
@@ -35,6 +39,11 @@ class TreinoExecutadoAdmin(admin.ModelAdmin):
     list_display = ('id', 'treino', 'paciente', 'data', 'finalizado', 'tempo_total')
     list_filter = ('finalizado', 'data', 'treino')
     inlines = [ExercicioExecutadoInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # força queryset "limpo" no admin, sem prefetch do ViewSet
+        return qs.all()
 
 @admin.register(ExercicioExecutado)
 class ExercicioExecutadoAdmin(admin.ModelAdmin):

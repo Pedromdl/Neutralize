@@ -56,7 +56,7 @@ class Treino(models.Model):
         verbose_name_plural = "Treinos"
 
     def __str__(self):
-        return f"{self.nome} ({self.secao})"
+        return self.nome or "Treino sem nome"
 
 
 class ExercicioPrescrito(models.Model):
@@ -70,8 +70,7 @@ class ExercicioPrescrito(models.Model):
 
 
     def __str__(self):
-        return f"{self.orientacao.titulo} - {self.treino}"
-
+        return self.orientacao.titulo if self.orientacao else "Exercício"
 
 # ---------------------------
 # Execução do treino
@@ -102,4 +101,4 @@ class SerieRealizada(models.Model):
     carga = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)  # realizado
 
     def __str__(self):
-        return f"Série {self.numero} - {self.exercicio.orientacao.titulo}"
+        return f"Série {self.numero} - {self.exercicio_id}"
