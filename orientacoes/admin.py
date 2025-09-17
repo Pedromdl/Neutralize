@@ -18,12 +18,26 @@ class SerieRealizadaInline(admin.TabularInline):
     extra = 1
     fk_name = "execucao"  # agora aponta para ExercicioExecutado
 
+from django.utils.html import format_html
+
 class ExercicioExecutadoInline(admin.TabularInline):
     model = ExercicioExecutado
+    fields = ('exercicio', 'rpe_display', 'seriess_display')
+    readonly_fields = ('rpe_display', 'seriess_display')
+    extra = 0
+    can_delete = False
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.exclude(series__isnull=True)  # Exclui ExerciciosExecutado sem séries
+    def rpe_display(self, obj):
+        return obj.rpe if obj.rpe is not None else "-"
+    rpe_display.short_description = "RPE"
+
+    def seriess_display(self, obj):
+        if not obj.seriess:
+            return "-"
+        # Transforma o JSON em string legível
+        return format_html("<br>".join([f"Série {s.get('numero', i+1)}: {s.get('repeticoes', '-')} reps @ {s.get('carga', '-')}" 
+                                        for i, s in enumerate(obj.seriess)]))
+    seriess_display.short_description = "Séries"
 
 
 # 🔹 Admin do Treino (template)
@@ -47,9 +61,8 @@ class TreinoExecutadoAdmin(admin.ModelAdmin):
 
 @admin.register(ExercicioExecutado)
 class ExercicioExecutadoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'treino_executado', 'exercicio', 'rpe')
+    list_display = ('id', 'treino_executado', 'exercicio', 'rpe', 'seriess')
     list_filter = ('treino_executado', 'exercicio')
-    inlines = [SerieRealizadaInline]  # se quiser aninhar, precisa de NestedAdmin ou admin separado
 
 @admin.register(SerieRealizada)
 class SerieRealizadaAdmin(admin.ModelAdmin):

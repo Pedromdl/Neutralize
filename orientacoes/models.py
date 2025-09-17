@@ -91,6 +91,8 @@ class ExercicioExecutado(models.Model):
     treino_executado = models.ForeignKey(TreinoExecutado, on_delete=models.CASCADE, related_name="exercicios")
     exercicio = models.ForeignKey(ExercicioPrescrito, on_delete=models.CASCADE)
     rpe = models.IntegerField(null=True, blank=True)
+    seriess = models.JSONField(default=list, blank=True)
+
 
 class SerieRealizada(models.Model):
     """Séries executadas em uma execução de treino"""

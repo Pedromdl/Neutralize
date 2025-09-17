@@ -190,26 +190,16 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
                 continue
 
             try:
-                exercicio_executado = ExercicioExecutado.objects.create(
+                # 🔹 Agora salva só no ExercicioExecutado
+                ExercicioExecutado.objects.create(
                     treino_executado=treino,
                     exercicio_id=exercicio_id,
-                    rpe=ex_data.get('rpe')
+                    rpe=ex_data.get('rpe'),
+                    seriess=ex_data.get('series', [])  # fica tudo no JSONField
                 )
             except Exception as e:
                 erros.append(f"Erro ao criar ExercicioExecutado {exercicio_id}: {str(e)}")
                 continue
-
-            for s_idx, s in enumerate(ex_data.get('series', [])):
-                try:
-                    SerieRealizada.objects.create(
-                        execucao=exercicio_executado,
-                        exercicio=exercicio_executado.exercicio,
-                        numero=s.get('numero'),
-                        repeticoes=s.get('repeticoes'),
-                        carga=s.get('carga')
-                    )
-                except Exception as e:
-                    erros.append(f"Erro na série {s_idx+1} do exercício {exercicio_id}: {str(e)}")
 
         serializer = self.get_serializer(treino)
         response_data = {'treino': serializer.data}

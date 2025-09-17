@@ -66,11 +66,15 @@ class SerieRealizadaSerializer(serializers.ModelSerializer):
         fields = ['exercicio', 'numero', 'repeticoes', 'carga']
 
 class ExercicioExecutadoSerializer(serializers.ModelSerializer):
+    # Mantém o serializer antigo para não quebrar nada
     series = SerieRealizadaSerializer(many=True, read_only=True)
+    
+    # Novo campo JSON
+    seriess = serializers.JSONField(read_only=True)  # ou read/write conforme seu teste
 
     class Meta:
         model = ExercicioExecutado
-        fields = ["id", "exercicio", "rpe", "series"]
+        fields = ["id", "exercicio", "rpe", "series", "seriess"]
 
 class TreinoExecutadoSerializer(serializers.ModelSerializer):
     exercicios = ExercicioExecutadoSerializer(many=True, read_only=True)
