@@ -103,7 +103,7 @@ class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
 # =========================
 class TreinoViewSet(viewsets.ModelViewSet):
     queryset = Treino.objects.all()
-    serializer_class = TreinoSerializer  # Fallback padrão
+    serializer_class = TreinoSerializer  # serializer completo
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -112,12 +112,19 @@ class TreinoViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(secao_id=secao_id)
         return queryset
 
-    def get_serializer_class(self):
-        if self.action == 'list':
-            # Retorna o serializer completo para list
-            return TreinoSerializer
-        # Para todas as outras ações, retorna o serializer padrão
-        return self.serializer_class
+    @action(detail=False, methods=['get'])
+    def por_secao(self, request):
+        """
+        Retorna apenas id, nome e secao dos treinos de uma seção,
+        sem os exercícios, para a página TreinoSecaoDetalhes.
+        """
+        secao_id = request.query_params.get('secao')
+        if not secao_id:
+            return Response({"detail": "Parâmetro 'secao' é obrigatório."}, status=400)
+        
+        treinos = Treino.objects.filter(secao_id=secao_id)
+        serializer = TreinoListSerializer(treinos, many=True)
+        return Response(serializer.data)
 
 
 import time
