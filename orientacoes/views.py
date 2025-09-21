@@ -12,7 +12,7 @@ from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
     PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoListSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
-    ExercicioPrescritoSerializer, TreinoGraficoSerializer
+    ExercicioPrescritoSerializer
 )
 # =========================
 # Tela Inicial
@@ -27,13 +27,16 @@ def resumo_treinos(request):
     ultimo = treinos.last()
     ultimo_data = ultimo.data if ultimo else None
 
+    # cria lista de datas de todos os treinos
+    treinos_dias = [t.data.strftime("%d/%m/%Y") for t in treinos]
+
     return Response({
         "totalTreinosExecutados": total,
         "ultimoTreino": {
             "data": ultimo_data.strftime("%d/%m/%Y") if ultimo else "-"
-        }
+        },
+        "treinosExecutados": treinos_dias
     })
-    
 # =========================
 # Pastas
 # =========================
@@ -100,6 +103,7 @@ class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
 # =========================
 class TreinoViewSet(viewsets.ModelViewSet):
     queryset = Treino.objects.all()
+    serializer_class = TreinoSerializer  # Fallback padrão
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -110,8 +114,11 @@ class TreinoViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return TreinoListSerializer  # só id, nome, secao
-        return TreinoSerializer  # inclui exercicios
+            # Retorna o serializer completo para list
+            return TreinoSerializer
+        # Para todas as outras ações, retorna o serializer padrão
+        return self.serializer_class
+
 
 import time
 import logging
