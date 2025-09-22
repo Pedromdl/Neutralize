@@ -5,13 +5,15 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework import generics
+from rest_framework.generics import ListAPIView
 
 # 🔹 Models
 from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, SerieRealizada, ExercicioExecutado, ExercicioPrescrito
 from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
-    PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoListSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
+    HistoricoTreinoSerializer, PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoListSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
     ExercicioPrescritoSerializer
 )
 # =========================
@@ -125,6 +127,14 @@ class TreinoViewSet(viewsets.ModelViewSet):
         treinos = Treino.objects.filter(secao_id=secao_id)
         serializer = TreinoListSerializer(treinos, many=True)
         return Response(serializer.data)
+    
+class HistoricoTreinoList(generics.ListAPIView):
+    serializer_class = HistoricoTreinoSerializer
+
+    def get_queryset(self):
+        # pega o email do user logado e busca a instância de Usuário
+        usuario = Usuário.objects.get(email=self.request.user.email)
+        return TreinoExecutado.objects.filter(paciente=usuario).order_by('-data')
 
 
 import time

@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    HistoricoTreinoList,
     PastaViewSet,
     SecaoViewSet,
     BancodeExercicioViewSet,
@@ -22,5 +23,6 @@ router.register(r'treinosexecutados', TreinoExecutadoViewSet, basename='treinoex
 # 🔹 URLs finais
 urlpatterns = [
     path('resumo_treinos/', resumo_treinos, name='resumo-treinos'),  # endpoint customizado
+    path('historico_treinos/', HistoricoTreinoList.as_view()),
     path('', include(router.urls)),  # todas as rotas do router
 ]

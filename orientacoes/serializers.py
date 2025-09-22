@@ -85,6 +85,13 @@ class TreinoExecutadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = TreinoExecutado
         fields = ["id", "treino", "treino_detalhes", "paciente", "finalizado", "tempo_total", "data", "exercicios"]
+
+class HistoricoTreinoSerializer(serializers.ModelSerializer):
+    treino_nome = serializers.CharField(source='treino.nome', read_only=True)
+
+    class Meta:
+        model = TreinoExecutado
+        fields = ['id', 'treino_nome', 'data']
         
 class SerieGraficoSerializer(serializers.ModelSerializer):
     class Meta:
