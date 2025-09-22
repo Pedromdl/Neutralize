@@ -78,12 +78,13 @@ class ExercicioExecutadoSerializer(serializers.ModelSerializer):
 
 class TreinoExecutadoSerializer(serializers.ModelSerializer):
     exercicios = ExercicioExecutadoSerializer(many=True, read_only=True)
-    treino = TreinoListSerializer(read_only=True)  # agora retorna nome e seção completos
+    treino = serializers.PrimaryKeyRelatedField(queryset=Treino.objects.all())
+    treino_detalhes = TreinoListSerializer(source='treino', read_only=True)    # só para retorno
     paciente = serializers.PrimaryKeyRelatedField(queryset=Usuário.objects.all())
 
     class Meta:
         model = TreinoExecutado
-        fields = ["id", "treino", "paciente", "finalizado", "tempo_total", "data", "exercicios"]
+        fields = ["id", "treino", "treino_detalhes", "paciente", "finalizado", "tempo_total", "data", "exercicios"]
         
 class SerieGraficoSerializer(serializers.ModelSerializer):
     class Meta:

@@ -172,13 +172,18 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Usuário sem perfil de paciente.'}, status=400)
 
         payload = request.data.copy()
-        payload['paciente'] = paciente.id
+        payload['paciente'] = paciente.id  # backend preenche paciente
+        treino_id = payload.get("treino")
+
+        if not treino_id:
+            return Response({'error': 'ID do treino não foi enviado.'}, status=400)
 
         serializer = self.get_serializer(data=payload)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
     @action(detail=True, methods=['post'])
     def finalizar(self, request, pk=None):
