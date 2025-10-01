@@ -57,7 +57,7 @@ class PastaViewSet(viewsets.ModelViewSet):
             usuario = self.request.user.usuario
             return qs.filter(paciente=usuario)
 
-        return qs
+        return qs.none()
 # =========================
 # Seções
 # =========================
