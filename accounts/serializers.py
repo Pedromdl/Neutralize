@@ -32,4 +32,5 @@ class CustomUserSerializer(UserSerializer):
             'phone',
             'birth_date',
             'role',
+            'is_staff',
         )

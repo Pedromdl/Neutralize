@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'api',
     'orientacoes',
     'eventos',
+    'financeiro',
 ]
 
 SITE_ID = 1
