@@ -9,7 +9,7 @@ from django.conf import settings
 class Usuário(models.Model):
     nome = models.CharField(max_length=100)
     cpf = models.CharField(max_length=14, unique=True, blank=True, null=True)  # Formato: 000.000.000-00
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
     telefone = models.CharField(max_length=15, blank=True, null=True)
     endereço = models.CharField(max_length=255, blank=True, null=True)
     data_de_nascimento = models.DateField(blank=True, null=True)
@@ -20,7 +20,6 @@ class Usuário(models.Model):
     
 # Modelos de Dados
     
-
 class CategoriaTeste(models.Model):
     """Tabela que contém todos os testes disponíveis"""
     nome = models.CharField(max_length=100, unique=True)

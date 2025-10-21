@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
 import calendar
+from datetime import datetime
+
 
 
 
@@ -16,6 +18,28 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
     serializer_class = EventoAgendaSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['paciente']  # permite filtro por paciente
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        start = self.request.query_params.get('start')
+        end = self.request.query_params.get('end')
+
+        # 🔹 Converter para apenas YYYY-MM-DD
+        if start:
+            try:
+                start = datetime.fromisoformat(start).date()
+            except ValueError:
+                start = None
+        if end:
+            try:
+                end = datetime.fromisoformat(end).date()
+            except ValueError:
+                end = None
+
+        if start and end:
+            queryset = queryset.filter(data__range=[start, end])
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
         dados = request.data
@@ -53,26 +77,29 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
             EventoAgendaSerializer(eventos_criados, many=True).data,
             status=status.HTTP_201_CREATED
         )
-    
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()  # evento principal
-        dados = request.data
+        dados = request.data.copy()  # cria cópia para manipular
+
+        # 🔹 Remover 'id' caso venha no request para evitar conflito
+        dados.pop('id', None)
 
         repetir = dados.get("repetir", False)
         frequencia = dados.get("frequencia", "nenhuma")
         repeticoes = int(dados.get("repeticoes") or 0)
+
+        # 🔹 Flag opcional para atualizar recorrências
+        atualizar_recorrencias = dados.pop("atualizar_recorrencias", False)
 
         # Atualiza o evento principal
         serializer = self.get_serializer(instance, data=dados, partial=partial)
         serializer.is_valid(raise_exception=True)
         evento_atualizado = serializer.save()
 
-        # Remove as ocorrências antigas vinculadas
-        evento_atualizado.ocorrencias.all().delete()
-
-        # Se precisa criar novas recorrências
-        if repetir and frequencia != "nenhuma" and repeticoes > 0:
+        # 🔹 Só remove e recria recorrências se a flag estiver True
+        if atualizar_recorrencias and repetir and frequencia != "nenhuma" and repeticoes > 0:
+            evento_atualizado.ocorrencias.all().delete()
             data_base = evento_atualizado.data
             for i in range(1, repeticoes):
                 nova_data = self.calcular_proxima_data(data_base, frequencia, i)
@@ -90,6 +117,7 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
                 )
 
         return Response(self.get_serializer(evento_atualizado).data, status=status.HTTP_200_OK)
+
 
     def calcular_proxima_data(self, data_inicial, frequencia, i):
         if frequencia == "diario":
