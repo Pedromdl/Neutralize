@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from httpcore import request
 from .models import EventoAgenda
 from .serializers import EventoAgendaSerializer
 from django_filters.rest_framework import DjangoFilterBackend
@@ -8,9 +9,6 @@ from rest_framework import status
 from rest_framework import viewsets
 import calendar
 from datetime import datetime
-
-
-
 
 # Create your views here.
 class EventoAgendaViewSet(viewsets.ModelViewSet):
@@ -42,7 +40,8 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        dados = request.data
+        dados = request.data.copy()  # cria cópia mutável
+        dados.pop('id', None)  # Remover 'id' se presente
         repetir = dados.get("repetir", False)
         frequencia = dados.get("frequencia", "nenhuma")
         repeticoes = int(dados.get("repeticoes") or 0)
