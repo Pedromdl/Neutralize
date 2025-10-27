@@ -76,7 +76,7 @@ INSTALLED_APPS = [
     'api',
     'orientacoes',
     'eventos',
-    'financeiro',
+    'financeiro.apps.FinanceiroConfig',
 ]
 
 SITE_ID = 1

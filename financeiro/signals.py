@@ -3,6 +3,8 @@ from django.dispatch import receiver
 from .models import TransacaoFinanceira, BancodeAtendimento, TransacaoOperacional
 from eventos.models import EventoAgenda
 
+print("✅ Signals do app Financeiro foram carregados com sucesso!")
+
 # Função auxiliar para criar banco se não existir
 def get_or_create_banco_para_paciente(paciente):
     banco, _ = BancodeAtendimento.objects.get_or_create(
@@ -82,6 +84,8 @@ def atualizar_banco_ao_mudar_status_evento(sender, instance, created, **kwargs):
 
     status_antigo = getattr(instance, "_status_antigo", None)
     paciente = instance.paciente
+    print(f"Paciente do evento: {instance.paciente}")
+
     if not paciente:
         return
 

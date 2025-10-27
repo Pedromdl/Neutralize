@@ -28,7 +28,7 @@ class EventoAgenda(models.Model):
     )
     repeticoes = models.PositiveIntegerField(blank=True, null=True)
     
-    evento_pai = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='ocorrencias')
+    evento_pai = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='ocorrencias')
 
     def __str__(self):
         return f"{self.tipo or 'Sem tipo'} - {getattr(self.paciente,'nome','Sem paciente')} ({self.data or 'Sem data'})"
