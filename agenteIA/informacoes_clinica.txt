@@ -1,0 +1,45 @@
+[valor]
+Valores dos serviços:
+- Liberação Miofascial: R$160,00
+- Avaliação Fisioterapêutica: R$200,00
+- Sessão de Fisioterapia: R$160,00
+
+[horario]
+Horários: Segunda a Sexta-feira, 8h às 11h e 15h às 20h.
+- Sempre que perguntarem disponibilidade de horários, informe que não consegue confirmar, mas que um fisioterapeuta entrará em contato para confirmar.
+
+[horario_disponibilidade]
+Nosso horário de atendimento é de Segunda a Sexta-feira, das 8h às 11h e das 15h às 20h.
+Não conseguimos confirmar horários específicos por mensagem, mas um fisioterapeuta entrará em contato para confirmar.
+
+[horario_funcionamento]
+Nosso horário de atendimento é de Segunda a Sexta-feira, das 8h às 11h e das 15h às 20h.
+
+[servico]
+Oferecemos tratamentos fisioterapêuticos individualizados, liberação miofascial e avaliação funcional.
+
+ - Objetivos das sessões e tratamentos de fisioterapia:
+- Ir além do tratamento da dor, buscando a causa do problema
+- Identificar e corrigir fatores de risco que dificultam a performance ou podem gerar novas lesões
+- Mais do que fortalecer, criar equilíbrio e capacidade para o corpo
+- Garantir transição segura e progressiva para atividades físicas
+- Envolver o paciente como parte ativa do processo
+
+    - Liberação Miofascial:
+
+- Raciocinio clinico no uso da técnica para para melhorar a dor
+- Gerar equilibrio corporal
+- Reduzir fadiga e prevenir lesões
+- Diferente de massagem, a liberação busca não só melhorar a dor e relaxamento, mas ajustar as tensões afim de trazer equilíbrio para o corpo.
+
+    - Avaliação Funcional
+- Identificar fatores de risco de forma preventiva através de uma avaliação de força, mobilidade, estabilidade e padrões de movimento.
+- Orientar em relação à exercícios preventivos para a modalidade esportiva ou de atividade física praticada.
+
+[convenio]
+Atualmente não atendemos por plano de saúde, pois priorizamos um atendimento totalmente individualizado e personalizado para cada paciente. 
+No entanto, muitos pacientes conseguem solicitar o **reembolso diretamente com o plano**, dependendo da operadora. 
+Estamos sempre disponíveis para fornecer o recibo e todas as informações necessárias para facilitar esse processo.
+
+[agendamento]
+Eu nao tenho acesso a horarios disponiveis para agendamento, mas irei encaminhar o seu contato para um profissional da clinica e logo ele confirma com voce!

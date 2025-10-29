@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'orientacoes',
     'eventos',
     'financeiro.apps.FinanceiroConfig',
+    'agenteIA',
 ]
 
 SITE_ID = 1
