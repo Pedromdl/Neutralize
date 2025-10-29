@@ -22,10 +22,20 @@ from django.utils.html import format_html
 
 class ExercicioExecutadoInline(admin.TabularInline):
     model = ExercicioExecutado
-    fields = ('exercicio', 'rpe_display', 'seriess_display')
-    readonly_fields = ('rpe_display', 'seriess_display')
+    fields = ('exercicio_nome', 'rpe_display', 'seriess_display')
+    readonly_fields = ('exercicio_nome', 'rpe_display', 'seriess_display')
     extra = 0
     can_delete = False
+    show_change_link = True
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # Pré-carrega tudo para evitar N+1
+        return qs.select_related('exercicio', 'exercicio__orientacao')
+
+    def exercicio_nome(self, obj):
+        return obj.exercicio.orientacao.titulo if obj.exercicio and obj.exercicio.orientacao else "-"
+    exercicio_nome.short_description = "Exercício"
 
     def rpe_display(self, obj):
         return obj.rpe if obj.rpe is not None else "-"
@@ -34,9 +44,13 @@ class ExercicioExecutadoInline(admin.TabularInline):
     def seriess_display(self, obj):
         if not obj.seriess:
             return "-"
-        # Transforma o JSON em string legível
-        return format_html("<br>".join([f"Série {s.get('numero', i+1)}: {s.get('repeticoes', '-')} reps @ {s.get('carga', '-')}" 
-                                        for i, s in enumerate(obj.seriess)]))
+        # Renderiza todas as séries detalhadas
+        return format_html(
+            "<br>".join(
+                f"Série {s.get('numero', i+1)}: {s.get('repeticoes', '-')} reps @ {s.get('carga', '-')}"
+                for i, s in enumerate(obj.seriess)
+            )
+        )
     seriess_display.short_description = "Séries"
 
 
@@ -56,8 +70,11 @@ class TreinoExecutadoAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        # força queryset "limpo" no admin, sem prefetch do ViewSet
-        return qs.all()
+        return qs.select_related('treino', 'paciente').prefetch_related(
+            'exercicios',                     # ExercicioExecutado
+            'exercicios__exercicio',          # ExercicioPrescrito
+            'exercicios__exercicio__orientacao'  # BancodeExercicio
+        )
 
 @admin.register(ExercicioExecutado)
 class ExercicioExecutadoAdmin(admin.ModelAdmin):
