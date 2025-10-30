@@ -294,7 +294,8 @@ def processar_mensagem_em_thread(data):
                                 f"Um novo número entrou em contato pela primeira vez:\n\nNúmero: {numero}\nMensagem: {texto}"
                             )
 
-                        Mensagem.objects.create(numero=numero, texto=texto, resposta="")
+                        # Removida a criação direta para evitar duplicação
+                        # Mensagem.objects.create(numero=numero, texto=texto, resposta="")
 
                         estado, _ = EstadoIA.objects.get_or_create(numero=numero)
                         if not estado.ia_ativa:
