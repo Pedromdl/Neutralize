@@ -1,12 +1,11 @@
 from django.shortcuts import render
 from django.utils import timezone
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, filters
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework import generics
-from rest_framework.generics import ListAPIView
 
 # 🔹 Models
 from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, SerieRealizada, ExercicioExecutado, ExercicioPrescrito
@@ -77,6 +76,10 @@ class BancodeExercicioViewSet(viewsets.ModelViewSet):
     """
     queryset = BancodeExercicio.objects.all()
     serializer_class = BancodeExercicioSerializer
+
+    # 🔹 Adiciona SearchFilter para pesquisa
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['titulo']  # permite ?search=palavra
 
     def create(self, request, *args, **kwargs):
         # 🔹 Caso o frontend envie uma LISTA de objetos
