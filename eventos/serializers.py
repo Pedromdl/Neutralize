@@ -15,4 +15,4 @@ class EventoAgendaResumoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventoAgenda
-        fields = ['data', 'hora_inicio', 'hora_fim', 'paciente_nome', 'responsavel', 'tipo', 'status']
+        fields = ['id', 'data', 'hora_inicio', 'hora_fim', 'paciente_nome', 'responsavel', 'tipo', 'status']
