@@ -17,12 +17,21 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['paciente']  # permite filtro por paciente
 
+    # 🔹 Adicione este método logo aqui:
+    def get_serializer_class(self):
+        from .serializers import EventoAgendaResumoSerializer
+        # Se for listagem (GET sem ID), usa o serializer leve
+        if self.action == 'list':
+            return EventoAgendaResumoSerializer
+        # Para as demais ações (detalhar, criar, editar, deletar), usa o completo
+        return EventoAgendaSerializer
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related('paciente')
+        
         start = self.request.query_params.get('start')
         end = self.request.query_params.get('end')
 
-        # 🔹 Converter para apenas YYYY-MM-DD
         if start:
             try:
                 start = datetime.fromisoformat(start).date()
@@ -38,7 +47,7 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(data__range=[start, end])
 
         return queryset
-
+    
     def create(self, request, *args, **kwargs):
         dados = request.data.copy()  # cria cópia mutável
         dados.pop('id', None)  # Remover 'id' se presente
