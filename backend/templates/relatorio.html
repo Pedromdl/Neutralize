@@ -9,32 +9,28 @@
   <style>
     @page {
       size: A4;
-      margin: 0;
-      /* Remove TODAS as margens da página */
+      margin-top: 20mm;
+      margin-left: 0;
+      margin-right: 0;
+      margin-bottom: 0;
     }
 
     html,
     body {
-      font-family: "Helvetica", Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       color: #111;
       font-size: 12px;
-      background-color: #f5f7fa;
-      /* Cor de fundo do PDF */
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
+      background-color: #fff;
       margin: 0;
       padding: 0;
-      height: 100%;
-      width: 100%;
     }
 
     .page {
       width: 210mm;
-      height: 297mm;
-      padding: 20mm 18mm;
-      /* Controle interno de margem */
+      min-height: 297mm;
+      padding: 0 18mm;
       box-sizing: border-box;
-      background-color: #f5f7fa;
+      background-color: #fff;
     }
 
     header {
@@ -87,30 +83,34 @@
       padding-left: 8px;
     }
 
+    .chart {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    a {
+      color: #111;
+      text-decoration: none;
+    }
+
     footer {
-      position: absolute;
-      bottom: 12mm;
-      left: 18mm;
-      right: 18mm;
-      font-size: 10px;
-      color: #888;
       border-top: 1px dashed #eee;
       padding-top: 8px;
-      display: flex;
-      justify-content: space-between;
+      font-size: 10px;
+      text-align: center;
+      margin-top: 20px;
     }
   </style>
-
 </head>
 
 <body>
   <div class="page">
     <header>
-      <div class="brand" style="display: flex; align-items: center; justify-content: flex-start; gap: 15px;">
-        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo Neutralize" style="height: 60px; width: auto;" />
-        <div class="clinic" style="font-size: 20px; font-weight: bold;">
-        Avaliação Fisioterapêutica
-        </div>
+      <div class="brand">
+        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo Neutralize" />
+        <div class="clinic">Avaliação Fisioterapêutica</div>
       </div>
       <div class="contact">
         <div>Contato: (31) 99287-7639</div>
@@ -120,28 +120,21 @@
     </header>
 
     <main class="container">
-      <!-- Cada card é tratado como um parágrafo visual -->
       <section class="card personal-data">
         <h2>Dados Pessoais</h2>
         <dl>
           <dt><strong>Nome:</strong></dt>
           <dd>{{ nome }}</dd>
-
           <dt><strong>Idade:</strong></dt>
           <dd>{{ idade }}</dd>
-
           <dt><strong>CPF:</strong></dt>
           <dd>{{ cpf }}</dd>
-
           <dt><strong>Email:</strong></dt>
           <dd>{{ email }}</dd>
-
           <dt><strong>Telefone:</strong></dt>
           <dd>{{ telefone }}</dd>
-
           <dt><strong>Endereço:</strong></dt>
           <dd>{{ endereço }}</dd>
-
           <dt><strong>Data de Nascimento:</strong></dt>
           <dd>{{ data_de_nascimento }}</dd>
         </dl>
@@ -152,7 +145,7 @@
         {% if grafico_forca %}
         <img class="chart" src="data:image/png;base64,{{ grafico_forca }}" alt="gráfico força muscular" />
         {% else %}
-        <p>Nenhum dado de força muscular disponível para este paciente.</p>
+        <p>Nenhum dado de força muscular disponível.</p>
         {% endif %}
       </section>
 
@@ -161,16 +154,16 @@
         {% if grafico_mobilidade %}
         <img class="chart" src="data:image/png;base64,{{ grafico_mobilidade }}" alt="gráfico mobilidade" />
         {% else %}
-        <p>Nenhum dado de mobilidade disponível para este paciente.</p>
+        <p>Nenhum dado de mobilidade disponível.</p>
         {% endif %}
       </section>
 
-       <section class="card">
+      <section class="card">
         <h2>Avaliação de Estabilidade</h2>
         {% if grafico_estabilidade %}
         <img class="chart" src="data:image/png;base64,{{ grafico_estabilidade }}" alt="gráfico estabilidade" />
         {% else %}
-        <p>Nenhum dado de estabilidade disponível para este paciente.</p>
+        <p>Nenhum dado de estabilidade disponível.</p>
         {% endif %}
       </section>
 
@@ -179,7 +172,7 @@
         {% if grafico_funcao %}
         <img class="chart" src="data:image/png;base64,{{ grafico_funcao }}" alt="gráfico função" />
         {% else %}
-        <p>Nenhum dado funcional disponível para este paciente.</p>
+        <p>Nenhum dado funcional disponível.</p>
         {% endif %}
       </section>
 
@@ -188,27 +181,27 @@
         {% if grafico_dor %}
         <img class="chart" src="data:image/png;base64,{{ grafico_dor }}" alt="gráfico dor" />
         {% else %}
-        <p>Nenhum dado de dor disponível para este paciente.</p>
+        <p>Nenhum dado de dor disponível.</p>
         {% endif %}
       </section>
 
       <section class="card">
         <h2>Observações e Testes Funcionais</h2>
-        <p class="paragraph">{{observacoes_qualitativas}}</p>
-        <p class="paragraph">Vídeos:
-          <a href="{{video1_url}}">{{video1_url}}</a> ·
-          <a href="{{video2_url}}">{{video2_url}}</a>
+        <p>{{ observacoes_qualitativas }}</p>
+        <p>Vídeos:
+          <a href="{{ video1_url }}">{{ video1_url }}</a> ·
+          <a href="{{ video2_url }}">{{ video2_url }}</a>
         </p>
       </section>
 
       <section class="card">
         <h2>Hipótese Diagnóstica</h2>
-        <p class="paragraph">{{hipotese_diagnostica}}</p>
+        <p>{{ hipotese_diagnostica }}</p>
       </section>
 
       <section class="card">
         <h2>Orientação Terapêutica</h2>
-        <p class="paragraph">{{orientacao_terapeutica}}</p>
+        <p>{{ orientacao_terapeutica }}</p>
       </section>
 
       <section class="card">
@@ -216,22 +209,25 @@
         <div class="metrics">
           <div class="metric">
             <div>Extensão Lombar</div>
-            <div class="value">{{extensao_lombar_s}}</div>
+            <div>{{ extensao_lombar_s }}</div>
           </div>
           <div class="metric">
             <div>Single Leg</div>
-            <div class="value">{{single_leg_score}}</div>
+            <div>{{ single_leg_score }}</div>
           </div>
           <div class="metric">
             <div>Abdutores</div>
-            <div class="value">{{abdutores_percent}}%</div>
+            <div>{{ abdutores_percent }}%</div>
           </div>
         </div>
       </section>
     </main>
 
-    <div>Relatório gerado por Neutralize · Fisioterapia Ortopédica e Esportiva</div>
-    <div>Assinatura: ____________________</div>
+    <footer>
+      Relatório gerado por Neutralize · Fisioterapia Ortopédica e Esportiva
+      <br />
+      Assinatura: ____________________
+    </footer>
   </div>
 </body>
 

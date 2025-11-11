@@ -23,7 +23,7 @@ router.register(r'sessoes', SessaoViewSet, basename='sessao')
 
 
 from .views import (exportar_avaliacao_docx, gerar_relatorio_pdf, visualizar_relatorio, relatorio_publico, forca_publica, datas_disponiveis_publicas, mobilidade_publica, estabilidade_publica,
-                    funcao_publica, dor_publica, gerar_relatorio)
+                    funcao_publica, dor_publica, usuario_publico, gerar_relatorio)
 
 urlpatterns = [
 
@@ -36,6 +36,7 @@ urlpatterns = [
     path('funcao-publica/<str:token>/', funcao_publica, name='funcao-publica'),
     path('datas-publicas/<str:token>/', datas_disponiveis_publicas, name='datas_publicas'),
     path('dor-publica/<str:token>/', dor_publica, name='dor-publica'),
+    path('usuario-publico/<str:token>/', usuario_publico, name='usuario-publico'),
 
 ]
 

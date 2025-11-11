@@ -489,12 +489,13 @@ class SessaoViewSet(viewsets.ModelViewSet):
             return Sessao.objects.filter(paciente_id=paciente_id)
         return Sessao.objects.all()  # Retorna tudo se não filtrar
     
-from django.template.loader import render_to_string
 from django.http import HttpResponse
-import os
+from django.template.loader import render_to_string
+from weasyprint import HTML, CSS
+import base64, os
 from django.conf import settings
-import pdfkit
-import base64
+from .models import Usuário
+
 
 def gerar_relatorio_pdf(request, paciente_id):
     paciente = Usuário.objects.get(id=paciente_id)
@@ -510,18 +511,18 @@ def gerar_relatorio_pdf(request, paciente_id):
         with open(logo_path, "rb") as img_file:
             logo_base64 = base64.b64encode(img_file.read()).decode("utf-8")
     except FileNotFoundError:
-        logo_base64 = ""  # Evita erro se a imagem não existir
+        logo_base64 = ""
 
     idade = calcular_idade(paciente.data_de_nascimento)
 
-    # ✅ Chama as funções de gráfico, passando a data selecionada
+    # ✅ Gera os gráficos com base na data selecionada
     grafico_forca_base64 = gerar_grafico_forca_muscular(paciente, data_selecionada)
     grafico_mobilidade_base64 = gerar_grafico_mobilidade(paciente, data_selecionada)
     grafico_estabilidade_base64 = gerar_grafico_estabilidade(paciente, data_selecionada)
     grafico_dor_base64 = gerar_grafico_dor(paciente, data_selecionada)
     grafico_funcao_base64 = gerar_grafico_funcao(paciente, data_selecionada)
 
-    # Renderiza o HTML com o logo, dados do paciente e gráficos
+    # Renderiza o HTML
     html_string = render_to_string("relatorio.html", {
         "logo_base64": logo_base64,
         "nome": paciente.nome,
@@ -538,33 +539,20 @@ def gerar_relatorio_pdf(request, paciente_id):
         "grafico_funcao": grafico_funcao_base64,
     })
 
-    # Caminho do executável wkhtmltopdf
-    config = pdfkit.configuration(
-        wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-    )
-
-    # Gera o PDF com fundo e margens ajustadas
-    pdf_bytes = pdfkit.from_string(
-        html_string,
-        False,
-        configuration=config,
-        options={
-            'page-size': 'A4',
-            'margin-top': '0mm',
-            'margin-right': '0mm',
-            'margin-bottom': '0mm',
-            'margin-left': '0mm',
-            'encoding': "UTF-8",
-            'print-media-type': '',
-            'background': '',
-            'disable-smart-shrinking': '',
-        }
+    # Gera o PDF diretamente do HTML
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[CSS(string="""
+            @page { size: A4; margin: 10mm; }
+            body { font-family: 'Arial', sans-serif; }
+            img { max-width: 100%; height: auto; }
+        """)]
     )
 
     # Retorna o PDF como download
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response = HttpResponse(pdf_file, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="relatorio_{paciente.nome}.pdf"'
     return response
+
 
 
 def calcular_idade(data_nascimento):
@@ -575,8 +563,13 @@ def calcular_idade(data_nascimento):
         (hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day)
     )
 
-def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
+from matplotlib.colors import to_rgb
+from io import BytesIO
+import matplotlib.pyplot as plt
+import base64
+from django.db.models import Max
 
+def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
     print(f"[DEBUG] gerando gráfico para paciente: {paciente.nome}")
     print(f"[DEBUG] data_selecionada: {data_selecionada}")
 
@@ -634,10 +627,14 @@ def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
         width=largura, label="Lado Direito", color="#282829"
     )
 
-    # Valores dentro das barras
+    # Valores dentro das barras com contraste automático
     for barras in [barras_esq, barras_dir]:
         for barra in barras:
             altura = barra.get_height()
+            r, g, b = to_rgb(barra.get_facecolor())  # converte cor da barra para RGB 0-1
+            luminancia = 0.2126*r + 0.7152*g + 0.0722*b
+            cor_texto = "black" if luminancia > 0.5 else "white"
+
             plt.text(
                 barra.get_x() + barra.get_width() / 2,
                 altura / 2,
@@ -645,7 +642,7 @@ def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
                 ha="center",
                 va="center",
                 fontsize=7,
-                color="white" if barra.get_facecolor() == (0.16, 0.16, 0.16, 1) else "black",
+                color=cor_texto,
             )
 
     # Configurações de eixo e legenda
@@ -659,7 +656,6 @@ def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
 
     plt.xticks(x, movimentos, rotation=30, ha="right", fontsize=6)
     plt.ylabel("Força (Kg)", fontsize=8)
-    plt.title("Avaliação de Força Muscular", fontsize=9)
     plt.legend(fontsize=7)
     plt.tight_layout()
 
@@ -671,70 +667,40 @@ def gerar_grafico_forca_muscular(paciente, data_selecionada=None):
     image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
 
     return image_base64
-
 def gerar_grafico_mobilidade(paciente, data_selecionada=None):
-
     print(f"[DEBUG] gerando gráfico de mobilidade para paciente: {paciente.nome}")
     print(f"[DEBUG] data_selecionada: {data_selecionada}")
 
-    # Filtra os registros do paciente
     qs = Mobilidade.objects.filter(paciente=paciente)
-    print(f"[DEBUG] total de registros do paciente: {qs.count()}")
-
     if data_selecionada:
         qs = qs.filter(data_avaliacao=data_selecionada)
-        print(f"[DEBUG] registros após filtro de data: {qs.count()}")
 
-    # Busca os últimos registros por teste de mobilidade
-    ultimas_avaliacoes = (
-        qs
-        .values("nome__nome")
-        .annotate(data_mais_recente=Max("data_avaliacao"))
-    )
-    print(f"[DEBUG] ultimas_avaliacoes: {list(ultimas_avaliacoes)}")
-
-    # Rebusca os objetos correspondentes
-    dados = []
-    for item in ultimas_avaliacoes:
-        registro = (
-            qs
-            .filter(
-                nome__nome=item["nome__nome"],
-                data_avaliacao=item["data_mais_recente"]
-            )
-            .first()
-        )
-        if registro:
-            dados.append(registro)
-    print(f"[DEBUG] quantidade de dados usados no gráfico: {len(dados)}")
+    ultimas_avaliacoes = qs.values("nome__nome").annotate(data_mais_recente=Max("data_avaliacao"))
+    dados = [qs.filter(nome__nome=item["nome__nome"], data_avaliacao=item["data_mais_recente"]).first()
+             for item in ultimas_avaliacoes if qs.filter(nome__nome=item["nome__nome"], data_avaliacao=item["data_mais_recente"]).exists()]
 
     if not dados:
-        print("[DEBUG] Nenhum dado encontrado para gerar o gráfico")
         return None
 
-    # Prepara os dados
     testes = [d.nome.nome if d.nome else "Teste" for d in dados]
     lado_esquerdo = [float(d.lado_esquerdo) for d in dados]
     lado_direito = [float(d.lado_direito) for d in dados]
 
-    # Criação do gráfico
     plt.figure(figsize=(4.2, 3))
     x = range(len(testes))
     largura = 0.45
 
-    barras_esq = plt.bar(
-        [i - largura / 2 for i in x], lado_esquerdo,
-        width=largura, label="Lado Esquerdo", color="#b7de42"
-    )
-    barras_dir = plt.bar(
-        [i + largura / 2 for i in x], lado_direito,
-        width=largura, label="Lado Direito", color="#282829"
-    )
+    barras_esq = plt.bar([i - largura / 2 for i in x], lado_esquerdo, width=largura, label="Lado Esquerdo", color="#b7de42")
+    barras_dir = plt.bar([i + largura / 2 for i in x], lado_direito, width=largura, label="Lado Direito", color="#282829")
 
-    # Valores dentro das barras
+    # Valores dentro das barras com contraste automático
     for barras in [barras_esq, barras_dir]:
         for barra in barras:
             altura = barra.get_height()
+            r, g, b = to_rgb(barra.get_facecolor())
+            luminancia = 0.2126*r + 0.7152*g + 0.0722*b
+            cor_texto = "black" if luminancia > 0.5 else "white"
+
             plt.text(
                 barra.get_x() + barra.get_width() / 2,
                 altura / 2,
@@ -742,10 +708,9 @@ def gerar_grafico_mobilidade(paciente, data_selecionada=None):
                 ha="center",
                 va="center",
                 fontsize=7,
-                color="white" if barra.get_facecolor() == (0.16, 0.16, 0.16, 1) else "black",
+                color=cor_texto
             )
 
-    # Configurações de eixo e legenda
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -756,89 +721,50 @@ def gerar_grafico_mobilidade(paciente, data_selecionada=None):
 
     plt.xticks(x, testes, rotation=30, ha="right", fontsize=6)
     plt.ylabel("Amplitude (°)", fontsize=8)
-    plt.title("Avaliação de Mobilidade", fontsize=9)
     plt.legend(fontsize=7)
     plt.tight_layout()
 
-    # Converte para base64
     buffer = BytesIO()
     plt.savefig(buffer, format="png", bbox_inches="tight", dpi=150, transparent=True)
     plt.close()
     buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
+    return base64.b64encode(buffer.read()).decode("utf-8")
 
-    return image_base64
 
 def gerar_grafico_estabilidade(paciente, data_selecionada=None):
     print(f"[DEBUG] gerando gráfico de estabilidade para paciente: {paciente.nome}")
     print(f"[DEBUG] data_selecionada: {data_selecionada}")
 
-    # Filtra os registros do paciente
     qs = Estabilidade.objects.filter(paciente=paciente)
-    print(f"[DEBUG] total de registros do paciente: {qs.count()}")
-
     if data_selecionada:
         qs = qs.filter(data_avaliacao=data_selecionada)
-        print(f"[DEBUG] registros após filtro de data: {qs.count()}")
 
-    # Busca os últimos registros por movimento
-    ultimas_avaliacoes = (
-        qs
-        .values("movimento_estabilidade__nome")
-        .annotate(data_mais_recente=Max("data_avaliacao"))
-    )
-    print(f"[DEBUG] ultimas_avaliacoes: {list(ultimas_avaliacoes)}")
-
-    # Rebusca os objetos correspondentes
-    dados = []
-    for item in ultimas_avaliacoes:
-        registro = (
-            qs
-            .filter(
-                movimento_estabilidade__nome=item["movimento_estabilidade__nome"],
-                data_avaliacao=item["data_mais_recente"]
-            )
-            .first()
-        )
-        if registro:
-            dados.append(registro)
-    print(f"[DEBUG] quantidade de dados usados no gráfico: {len(dados)}")
+    ultimas_avaliacoes = qs.values("movimento_estabilidade__nome").annotate(data_mais_recente=Max("data_avaliacao"))
+    dados = [qs.filter(movimento_estabilidade__nome=item["movimento_estabilidade__nome"], data_avaliacao=item["data_mais_recente"]).first()
+             for item in ultimas_avaliacoes if qs.filter(movimento_estabilidade__nome=item["movimento_estabilidade__nome"], data_avaliacao=item["data_mais_recente"]).exists()]
 
     if not dados:
-        print("[DEBUG] Nenhum dado encontrado para gerar o gráfico de estabilidade")
         return None
 
-    # Prepara os dados
     movimentos = [d.movimento_estabilidade.nome if d.movimento_estabilidade else "Movimento" for d in dados]
-    lado_esquerdo = []
-    lado_direito = []
+    lado_esquerdo = [float(d.lado_esquerdo) if d.lado_esquerdo else 0 for d in dados]
+    lado_direito = [float(d.lado_direito) if d.lado_direito else 0 for d in dados]
 
-    for d in dados:
-        try:
-            lado_esquerdo.append(float(d.lado_esquerdo))
-            lado_direito.append(float(d.lado_direito))
-        except ValueError:
-            lado_esquerdo.append(0)
-            lado_direito.append(0)
-
-    # Criação do gráfico
     plt.figure(figsize=(4.2, 3))
     x = range(len(movimentos))
     largura = 0.45
 
-    barras_esq = plt.bar(
-        [i - largura / 2 for i in x], lado_esquerdo,
-        width=largura, label="Lado Esquerdo", color="#b7de42"
-    )
-    barras_dir = plt.bar(
-        [i + largura / 2 for i in x], lado_direito,
-        width=largura, label="Lado Direito", color="#282829"
-    )
+    barras_esq = plt.bar([i - largura / 2 for i in x], lado_esquerdo, width=largura, label="Lado Esquerdo", color="#b7de42")
+    barras_dir = plt.bar([i + largura / 2 for i in x], lado_direito, width=largura, label="Lado Direito", color="#282829")
 
-    # Valores dentro das barras
+    # Valores dentro das barras com contraste automático
     for barras in [barras_esq, barras_dir]:
         for barra in barras:
             altura = barra.get_height()
+            r, g, b = to_rgb(barra.get_facecolor())
+            luminancia = 0.2126*r + 0.7152*g + 0.0722*b
+            cor_texto = "black" if luminancia > 0.5 else "white"
+
             plt.text(
                 barra.get_x() + barra.get_width() / 2,
                 altura / 2,
@@ -846,10 +772,9 @@ def gerar_grafico_estabilidade(paciente, data_selecionada=None):
                 ha="center",
                 va="center",
                 fontsize=7,
-                color="white" if barra.get_facecolor() == (0.16, 0.16, 0.16, 1) else "black",
+                color=cor_texto
             )
 
-    # Configurações de eixo e legenda
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -860,90 +785,45 @@ def gerar_grafico_estabilidade(paciente, data_selecionada=None):
 
     plt.xticks(x, movimentos, rotation=30, ha="right", fontsize=6)
     plt.ylabel("Pontuação / Tempo", fontsize=8)
-    plt.title("Avaliação de Estabilidade", fontsize=9)
     plt.legend(fontsize=7)
     plt.tight_layout()
 
-    # Converte em base64
     buffer = BytesIO()
     plt.savefig(buffer, format="png", bbox_inches="tight", dpi=150, transparent=True)
     plt.close()
     buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
-
-    return image_base64
-
+    return base64.b64encode(buffer.read()).decode("utf-8")
 def gerar_grafico_funcao(paciente, data_selecionada=None):
     print(f"[DEBUG] gerando gráfico de função para paciente: {paciente.nome}")
-    print(f"[DEBUG] data_selecionada: {data_selecionada}")
-
-    # Filtra os registros do paciente
     qs = TesteFuncao.objects.filter(paciente=paciente)
-    print(f"[DEBUG] total de registros do paciente: {qs.count()}")
-
     if data_selecionada:
         qs = qs.filter(data_avaliacao=data_selecionada)
-        print(f"[DEBUG] registros após filtro de data: {qs.count()}")
 
-    # Busca as últimas avaliações de cada teste
-    ultimas_avaliacoes = (
-        qs
-        .values("teste__nome")
-        .annotate(data_mais_recente=Max("data_avaliacao"))
-    )
-    print(f"[DEBUG] ultimas_avaliacoes: {list(ultimas_avaliacoes)}")
-
-    # Rebusca os objetos correspondentes
-    dados = []
-    for item in ultimas_avaliacoes:
-        registro = (
-            qs
-            .filter(
-                teste__nome=item["teste__nome"],
-                data_avaliacao=item["data_mais_recente"]
-            )
-            .first()
-        )
-        if registro:
-            dados.append(registro)
-
-    print(f"[DEBUG] quantidade de dados usados no gráfico: {len(dados)}")
+    ultimas_avaliacoes = qs.values("teste__nome").annotate(data_mais_recente=Max("data_avaliacao"))
+    dados = [qs.filter(teste__nome=item["teste__nome"], data_avaliacao=item["data_mais_recente"]).first()
+             for item in ultimas_avaliacoes if qs.filter(teste__nome=item["teste__nome"], data_avaliacao=item["data_mais_recente"]).exists()]
 
     if not dados:
-        print("[DEBUG] Nenhum dado encontrado para gerar o gráfico de função")
         return None
 
-    # Prepara os dados para o gráfico
     testes = [d.teste.nome if d.teste else "Teste" for d in dados]
-    lado_esquerdo = []
-    lado_direito = []
+    lado_esquerdo = [float(d.lado_esquerdo) if d.lado_esquerdo else 0 for d in dados]
+    lado_direito = [float(d.lado_direito) if d.lado_direito else 0 for d in dados]
 
-    for d in dados:
-        try:
-            lado_esquerdo.append(float(d.lado_esquerdo))
-            lado_direito.append(float(d.lado_direito))
-        except ValueError:
-            lado_esquerdo.append(0)
-            lado_direito.append(0)
-
-    # Criação do gráfico
     plt.figure(figsize=(4.2, 3))
     x = range(len(testes))
     largura = 0.45
 
-    barras_esq = plt.bar(
-        [i - largura / 2 for i in x], lado_esquerdo,
-        width=largura, label="Lado Esquerdo", color="#b7de42"
-    )
-    barras_dir = plt.bar(
-        [i + largura / 2 for i in x], lado_direito,
-        width=largura, label="Lado Direito", color="#282829"
-    )
+    barras_esq = plt.bar([i - largura / 2 for i in x], lado_esquerdo, width=largura, label="Lado Esquerdo", color="#b7de42")
+    barras_dir = plt.bar([i + largura / 2 for i in x], lado_direito, width=largura, label="Lado Direito", color="#282829")
 
-    # Valores dentro das barras
+    # Valores dentro das barras com contraste automático
     for barras in [barras_esq, barras_dir]:
         for barra in barras:
             altura = barra.get_height()
+            r, g, b = to_rgb(barra.get_facecolor())
+            luminancia = 0.2126*r + 0.7152*g + 0.0722*b
+            cor_texto = "black" if luminancia > 0.5 else "white"
             plt.text(
                 barra.get_x() + barra.get_width() / 2,
                 altura / 2,
@@ -951,10 +831,9 @@ def gerar_grafico_funcao(paciente, data_selecionada=None):
                 ha="center",
                 va="center",
                 fontsize=7,
-                color="white" if barra.get_facecolor() == (0.16, 0.16, 0.16, 1) else "black",
+                color=cor_texto
             )
 
-    # Aparência e legendas
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -962,81 +841,52 @@ def gerar_grafico_funcao(paciente, data_selecionada=None):
     ax.spines['bottom'].set_visible(False)
     ax.tick_params(axis='y', labelsize=7)
     ax.tick_params(axis='x', labelsize=8)
-
     plt.xticks(x, testes, rotation=30, ha="right", fontsize=6)
     plt.ylabel("Pontuação / Tempo", fontsize=8)
-    plt.title("Testes de Função", fontsize=9)
     plt.legend(fontsize=7)
     plt.tight_layout()
 
-    # Converte para Base64
     buffer = BytesIO()
     plt.savefig(buffer, format="png", bbox_inches="tight", dpi=150, transparent=True)
     plt.close()
     buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
+    return base64.b64encode(buffer.read()).decode("utf-8")
 
-    return image_base64
 
 def gerar_grafico_dor(paciente, data_selecionada=None):
     print(f"[DEBUG] gerando gráfico de dor para paciente: {paciente.nome}")
-    print(f"[DEBUG] data_selecionada: {data_selecionada}")
-
-    # Filtra os registros do paciente
     qs = TesteDor.objects.filter(paciente=paciente)
-    print(f"[DEBUG] total de registros do paciente: {qs.count()}")
-
     if data_selecionada:
         qs = qs.filter(data_avaliacao=data_selecionada)
-        print(f"[DEBUG] registros após filtro de data: {qs.count()}")
 
-    # Busca as últimas avaliações de cada teste
-    ultimas_avaliacoes = (
-        qs
-        .values("teste__nome")
-        .annotate(data_mais_recente=Max("data_avaliacao"))
-    )
-    print(f"[DEBUG] ultimas_avaliacoes: {list(ultimas_avaliacoes)}")
-
-    # Rebusca os objetos correspondentes
-    dados = []
-    for item in ultimas_avaliacoes:
-        registro = (
-            qs
-            .filter(
-                teste__nome=item["teste__nome"],
-                data_avaliacao=item["data_mais_recente"]
-            )
-            .first()
-        )
-        if registro:
-            dados.append(registro)
-
-    print(f"[DEBUG] quantidade de dados usados no gráfico: {len(dados)}")
+    ultimas_avaliacoes = qs.values("teste__nome").annotate(data_mais_recente=Max("data_avaliacao"))
+    dados = [qs.filter(teste__nome=item["teste__nome"], data_avaliacao=item["data_mais_recente"]).first()
+             for item in ultimas_avaliacoes if qs.filter(teste__nome=item["teste__nome"], data_avaliacao=item["data_mais_recente"]).exists()]
 
     if not dados:
-        print("[DEBUG] Nenhum dado encontrado para gerar o gráfico de dor")
-        return None
+        # Placeholder quando não há dados
+        plt.figure(figsize=(4.2, 3))
+        plt.text(0.5, 0.5, 'Sem dados', ha='center', va='center', fontsize=12, color='gray')
+        plt.axis('off')
+        buffer = BytesIO()
+        plt.savefig(buffer, format="png", bbox_inches="tight", dpi=150, transparent=True)
+        plt.close()
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode("utf-8")
 
-    # Prepara os dados
     testes = [d.teste.nome if d.teste else "Teste" for d in dados]
-    resultados = []
+    resultados = [float(d.resultado) if d.resultado else 0 for d in dados]
 
-    for d in dados:
-        try:
-            resultados.append(float(d.resultado))
-        except ValueError:
-            resultados.append(0)
-
-    # Criação do gráfico
     plt.figure(figsize=(4.2, 3))
     x = range(len(testes))
-
     barras = plt.bar(x, resultados, color="#ff4d4d", width=0.6)
 
-    # Valores dentro das barras
+    # Valores dentro das barras com contraste automático
     for barra in barras:
         altura = barra.get_height()
+        r, g, b = to_rgb(barra.get_facecolor())
+        luminancia = 0.2126*r + 0.7152*g + 0.0722*b
+        cor_texto = "black" if luminancia > 0.5 else "white"
         plt.text(
             barra.get_x() + barra.get_width() / 2,
             altura / 2,
@@ -1044,10 +894,9 @@ def gerar_grafico_dor(paciente, data_selecionada=None):
             ha="center",
             va="center",
             fontsize=7,
-            color="black"
+            color=cor_texto
         )
 
-    # Aparência
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -1055,20 +904,15 @@ def gerar_grafico_dor(paciente, data_selecionada=None):
     ax.spines['bottom'].set_visible(False)
     ax.tick_params(axis='y', labelsize=7)
     ax.tick_params(axis='x', labelsize=8)
-
     plt.xticks(x, testes, rotation=30, ha="right", fontsize=6)
     plt.ylabel("Intensidade / Resultado", fontsize=8)
-    plt.title("Testes de Dor", fontsize=9)
     plt.tight_layout()
 
-    # Converte para base64
     buffer = BytesIO()
     plt.savefig(buffer, format="png", bbox_inches="tight", dpi=150, transparent=True)
     plt.close()
     buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
-
-    return image_base64
+    return base64.b64encode(buffer.read()).decode("utf-8")
 
 def visualizar_relatorio(request, paciente_id):
     paciente = Usuário.objects.get(id=paciente_id)
@@ -1131,7 +975,7 @@ def relatorio_publico(request, token):
         return Response({'erro': 'Relatório não encontrado ou inativo'}, status=404)
 
     dados = {
-        'paciente': paciente.nome,
+        'paciente': list(Usuário.objects.filter(id=paciente.id).values()),
         'forca': list(ForcaMuscular.objects.filter(paciente=paciente).values()),
         'mobilidade': list(Mobilidade.objects.filter(paciente=paciente).values()),
         'funcao': list(TesteFuncao.objects.filter(paciente=paciente).values()),
@@ -1139,6 +983,7 @@ def relatorio_publico(request, token):
     }
 
     return Response(dados)
+
 from django.db.models import Max
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -1166,6 +1011,32 @@ def gerar_relatorio(request, paciente_id):
     )
 
     return Response({"url": url_relatorio}, status=201)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def usuario_publico(request, token):
+    """
+    Retorna os dados públicos do usuário associado a um relatório público via token.
+    """
+    try:
+        relatorio = RelatorioPublico.objects.get(token=token, ativo=True)
+        usuario = relatorio.paciente  # supondo que 'paciente' seja um objeto do tipo Usuario
+    except RelatorioPublico.DoesNotExist:
+        return Response({'erro': 'Relatório não encontrado ou inativo'}, status=404)
+
+    # Transformar os dados em um dicionário simples para o frontend
+    dados = {
+        'id': usuario.id,
+        'nome': usuario.nome,
+        'cpf': usuario.cpf,
+        'email': usuario.email,
+        'telefone': usuario.telefone,
+        'endereço': usuario.endereço,
+        'data_de_nascimento': usuario.data_de_nascimento,
+        'user_id': usuario.user_id,
+    }
+
+    return Response(dados)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
