@@ -78,8 +78,13 @@ INSTALLED_APPS = [
     'eventos',
     'financeiro.apps.FinanceiroConfig',
     'agenteIA',
+    'integracoes',
 ]
 
+# 🔑 Credenciais da API Strava
+STRAVA_CLIENT_ID = "184011"
+STRAVA_CLIENT_SECRET = "5566909ef3c9d60dfac9dc139224b713cf3e8220"
+BACKEND_URL = "http://localhost:8000"
 SITE_ID = 1
 
 #ACCOUNT_USER_MODEL_USERNAME_FIELD = None
@@ -180,10 +185,11 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'backend', 'templates')],  # 👈 adicione isso
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',

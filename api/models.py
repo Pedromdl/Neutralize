@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+import secrets
 
 
 # Create your models here.
@@ -194,3 +195,13 @@ class Sessao(models.Model):
 
     def __str__(self):
         return f'{self.paciente} - {self.titulo} ({self.data})'
+    
+
+class RelatorioPublico(models.Model):
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE, related_name='relatorios_publicos')
+    token = models.CharField(max_length=64, unique=True, default=secrets.token_hex)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Relatório público de {self.paciente.nome if hasattr(self.paciente, 'nome') else self.paciente}"

@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/', include('eventos.urls')),
     path('api/', include('financeiro.urls')),
     path('api/agenteIA/', include('agenteIA.urls')),
+    path('api/', include('integracoes.urls')),
 
     # Autenticação padrão (dj-rest-auth)
     # path('auth/', include('dj_rest_auth.urls')),

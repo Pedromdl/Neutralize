@@ -1,8 +1,15 @@
 [valor]
-Valores dos serviços:
-- Liberação Miofascial: R$160,00
-- Avaliação Fisioterapêutica: R$200,00
-- Sessão de Fisioterapia: R$160,00
+Valores dos serviços (sujeitos à confirmação no contato com a clínica):
+
+- Liberação Miofascial — R$160,00 (sessão ~50 min).
+  Por que: técnica manual especializada para liberar tensões fasciais e melhorar mobilidade, dor e equilíbrio garantindo melhores treinos e qualidade de vida.
+
+- Avaliação Fisioterapêutica — R$200,00 (60 min).
+  Por que: avaliação completa com anamnese, testes funcionais e plano de tratamento personalizado — base para um atendimento eficaz e seguro.
+
+- Sessão de Fisioterapia — R$160,00 (50 min).
+  Por que: tratamento individualizado (manual + exercícios e orientações) com ajuste contínuo pelo fisioterapeuta conforme evolução.
+
 
 [horario]
 Horários: Segunda a Sexta-feira, 8h às 11h e 15h às 20h.

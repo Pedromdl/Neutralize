@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Relatório de Avaliação</title>
+
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+      /* Remove TODAS as margens da página */
+    }
+
+    html,
+    body {
+      font-family: "Helvetica", Arial, sans-serif;
+      color: #111;
+      font-size: 12px;
+      background-color: #f5f7fa;
+      /* Cor de fundo do PDF */
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 20mm 18mm;
+      /* Controle interno de margem */
+      box-sizing: border-box;
+      background-color: #f5f7fa;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e5e5e5;
+      padding: 12px 0;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand img {
+      width: 48px;
+      height: 48px;
+    }
+
+    .clinic {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .contact {
+      text-align: right;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .container {
+      padding: 16px 0;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 14px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+
+    h2 {
+      margin: 8px 0 12px;
+      font-size: 14px;
+      border-left: 4px solid #282829;
+      padding-left: 8px;
+    }
+
+    footer {
+      position: absolute;
+      bottom: 12mm;
+      left: 18mm;
+      right: 18mm;
+      font-size: 10px;
+      color: #888;
+      border-top: 1px dashed #eee;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="page">
+    <header>
+      <div class="brand" style="display: flex; align-items: center; justify-content: flex-start; gap: 15px;">
+        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo Neutralize" style="height: 60px; width: auto;" />
+        <div class="clinic" style="font-size: 20px; font-weight: bold;">
+        Avaliação Fisioterapêutica
+        </div>
+      </div>
+      <div class="contact">
+        <div>Contato: (31) 99287-7639</div>
+        <div>Instagram: @neutralize.ft</div>
+        <div>neutralizeft.com.br</div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Cada card é tratado como um parágrafo visual -->
+      <section class="card personal-data">
+        <h2>Dados Pessoais</h2>
+        <dl>
+          <dt><strong>Nome:</strong></dt>
+          <dd>{{ nome }}</dd>
+
+          <dt><strong>Idade:</strong></dt>
+          <dd>{{ idade }}</dd>
+
+          <dt><strong>CPF:</strong></dt>
+          <dd>{{ cpf }}</dd>
+
+          <dt><strong>Email:</strong></dt>
+          <dd>{{ email }}</dd>
+
+          <dt><strong>Telefone:</strong></dt>
+          <dd>{{ telefone }}</dd>
+
+          <dt><strong>Endereço:</strong></dt>
+          <dd>{{ endereço }}</dd>
+
+          <dt><strong>Data de Nascimento:</strong></dt>
+          <dd>{{ data_de_nascimento }}</dd>
+        </dl>
+      </section>
+
+      <section class="card">
+        <h2>Avaliação de Força Muscular</h2>
+        {% if grafico_forca %}
+        <img class="chart" src="data:image/png;base64,{{ grafico_forca }}" alt="gráfico força muscular" />
+        {% else %}
+        <p>Nenhum dado de força muscular disponível para este paciente.</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Avaliação de Mobilidade</h2>
+        {% if grafico_mobilidade %}
+        <img class="chart" src="data:image/png;base64,{{ grafico_mobilidade }}" alt="gráfico mobilidade" />
+        {% else %}
+        <p>Nenhum dado de mobilidade disponível para este paciente.</p>
+        {% endif %}
+      </section>
+
+       <section class="card">
+        <h2>Avaliação de Estabilidade</h2>
+        {% if grafico_estabilidade %}
+        <img class="chart" src="data:image/png;base64,{{ grafico_estabilidade }}" alt="gráfico estabilidade" />
+        {% else %}
+        <p>Nenhum dado de estabilidade disponível para este paciente.</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Avaliação de Função</h2>
+        {% if grafico_funcao %}
+        <img class="chart" src="data:image/png;base64,{{ grafico_funcao }}" alt="gráfico função" />
+        {% else %}
+        <p>Nenhum dado funcional disponível para este paciente.</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Avaliação de Dor</h2>
+        {% if grafico_dor %}
+        <img class="chart" src="data:image/png;base64,{{ grafico_dor }}" alt="gráfico dor" />
+        {% else %}
+        <p>Nenhum dado de dor disponível para este paciente.</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Observações e Testes Funcionais</h2>
+        <p class="paragraph">{{observacoes_qualitativas}}</p>
+        <p class="paragraph">Vídeos:
+          <a href="{{video1_url}}">{{video1_url}}</a> ·
+          <a href="{{video2_url}}">{{video2_url}}</a>
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Hipótese Diagnóstica</h2>
+        <p class="paragraph">{{hipotese_diagnostica}}</p>
+      </section>
+
+      <section class="card">
+        <h2>Orientação Terapêutica</h2>
+        <p class="paragraph">{{orientacao_terapeutica}}</p>
+      </section>
+
+      <section class="card">
+        <h2>Testes</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div>Extensão Lombar</div>
+            <div class="value">{{extensao_lombar_s}}</div>
+          </div>
+          <div class="metric">
+            <div>Single Leg</div>
+            <div class="value">{{single_leg_score}}</div>
+          </div>
+          <div class="metric">
+            <div>Abdutores</div>
+            <div class="value">{{abdutores_percent}}%</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div>Relatório gerado por Neutralize · Fisioterapia Ortopédica e Esportiva</div>
+    <div>Assinatura: ____________________</div>
+  </div>
+</body>
+
+</html>

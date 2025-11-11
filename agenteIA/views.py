@@ -207,6 +207,12 @@ Você é Nia, assistente inteligente da clínica Neutralize.
 Responda apenas com base nestas informações:
 {info}
 
+Se a intenção for sobre valores, para cada serviço liste:
+- nome do serviço
+- preço
+- duração estimada
+- 1 frase curta explicando por que o valor se justifica (benefício/por que não é "qualquer fisioterapia")
+
 O paciente enviou: "{texto}"
 A intenção identificada foi: "{intencao}"
 
