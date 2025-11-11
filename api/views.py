@@ -1011,20 +1011,32 @@ def gerar_relatorio(request, paciente_id):
     )
 
     return Response({"url": url_relatorio}, status=201)
+from django.db.models import Max, Subquery, OuterRef
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from .models import (
+    RelatorioPublico, ForcaMuscular, Mobilidade, Estabilidade,
+    TesteFuncao, TesteDor
+)
+from .serializers import (
+    MobilidadeSerializer, EstabilidadeSerializer,
+    TesteFuncaoSerializer, TesteDorSerializer
+)
 
+# ============================
+# 1️⃣ Dados do usuário
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def usuario_publico(request, token):
-    """
-    Retorna os dados públicos do usuário associado a um relatório público via token.
-    """
     try:
-        relatorio = RelatorioPublico.objects.get(token=token, ativo=True)
-        usuario = relatorio.paciente  # supondo que 'paciente' seja um objeto do tipo Usuario
+        # SELECT + JOIN para evitar 2 consultas
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token, ativo=True)
+        usuario = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({'erro': 'Relatório não encontrado ou inativo'}, status=404)
 
-    # Transformar os dados em um dicionário simples para o frontend
     dados = {
         'id': usuario.id,
         'nome': usuario.nome,
@@ -1035,55 +1047,55 @@ def usuario_publico(request, token):
         'data_de_nascimento': usuario.data_de_nascimento,
         'user_id': usuario.user_id,
     }
-
     return Response(dados)
 
+
+# ============================
+# 2️⃣ Força Muscular
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def forca_publica(request, token):
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({"detail": "Token inválido"}, status=404)
 
     data_avaliacao = request.GET.get('data_avaliacao')
 
-    # 🔹 Se há data específica, retorna apenas dessa data
     if data_avaliacao:
         dados = (
             ForcaMuscular.objects
             .filter(paciente=paciente, data_avaliacao=data_avaliacao)
             .values('id', 'movimento_forca__nome', 'lado_esquerdo', 'lado_direito', 'data_avaliacao')
-            .order_by('id')  # 👈 ordenação padronizada
+            .order_by('id')
         )
-        return Response(dados)
-
-    # 🔹 Caso contrário, traz o último registro de cada movimento
-    subquery = (
-        ForcaMuscular.objects
-        .filter(paciente=paciente)
-        .values('movimento_forca')
-        .annotate(ultima_data=Max('data_avaliacao'))
-    )
-
-    dados = (
-        ForcaMuscular.objects
-        .filter(
+    else:
+        # Subquery otimizada
+        ultima_data = ForcaMuscular.objects.filter(
             paciente=paciente,
-            data_avaliacao__in=[i['ultima_data'] for i in subquery]
+            movimento_forca=OuterRef('movimento_forca')
+        ).values('data_avaliacao').order_by('-data_avaliacao')[:1]
+
+        dados = (
+            ForcaMuscular.objects
+            .filter(paciente=paciente, data_avaliacao=Subquery(ultima_data))
+            .values('id', 'movimento_forca__nome', 'lado_esquerdo', 'lado_direito', 'data_avaliacao')
+            .order_by('id')
         )
-        .values('id', 'movimento_forca__nome', 'lado_esquerdo', 'lado_direito', 'data_avaliacao')
-        .order_by('id')  # 👈 igual aqui também
-    )
 
     return Response(dados)
 
+
+# ============================
+# 3️⃣ Mobilidade
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def mobilidade_publica(request, token):
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({"detail": "Token inválido"}, status=404)
@@ -1093,31 +1105,28 @@ def mobilidade_publica(request, token):
     if data_avaliacao:
         queryset = Mobilidade.objects.filter(paciente=paciente, data_avaliacao=data_avaliacao)
     else:
-        subquery = (
-            Mobilidade.objects
-            .filter(paciente=paciente)
-            .values('nome')
-            .annotate(ultima_data=Max('data_avaliacao'))
-        )
+        ultima_data = Mobilidade.objects.filter(
+            paciente=paciente,
+            nome=OuterRef('nome')
+        ).values('data_avaliacao').order_by('-data_avaliacao')[:1]
+
         queryset = Mobilidade.objects.filter(
             paciente=paciente,
-            data_avaliacao__in=[i['ultima_data'] for i in subquery]
-        ).order_by('id')  # 🔹 garante ordem consistente
-
-        
+            data_avaliacao=Subquery(ultima_data)
+        ).order_by('id')
 
     serializer = MobilidadeSerializer(queryset, many=True)
     return Response(serializer.data)
 
+
+# ============================
+# 4️⃣ Estabilidade
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def estabilidade_publica(request, token):
-    """
-    Endpoint público para retornar dados de estabilidade de um paciente,
-    usando o token de relatório público.
-    """
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({"detail": "Token inválido"}, status=404)
@@ -1125,36 +1134,30 @@ def estabilidade_publica(request, token):
     data_avaliacao = request.GET.get('data_avaliacao')
 
     if data_avaliacao:
-        queryset = Estabilidade.objects.filter(
-            paciente=paciente,
-            data_avaliacao=data_avaliacao
-        ).order_by('id')  # 🔹 garante ordem consistente
+        queryset = Estabilidade.objects.filter(paciente=paciente, data_avaliacao=data_avaliacao).order_by('id')
     else:
-        # Pega o último registro de cada movimento
-        subquery = (
-            Estabilidade.objects
-            .filter(paciente=paciente)
-            .values('movimento_estabilidade')
-            .annotate(ultima_data=Max('data_avaliacao'))
-        )
+        ultima_data = Estabilidade.objects.filter(
+            paciente=paciente,
+            movimento_estabilidade=OuterRef('movimento_estabilidade')
+        ).values('data_avaliacao').order_by('-data_avaliacao')[:1]
+
         queryset = Estabilidade.objects.filter(
             paciente=paciente,
-            data_avaliacao__in=[i['ultima_data'] for i in subquery]
-        ).order_by('id')  # 🔹 garante ordem consistente
+            data_avaliacao=Subquery(ultima_data)
+        ).order_by('id')
 
     serializer = EstabilidadeSerializer(queryset, many=True)
     return Response(serializer.data)
 
 
+# ============================
+# 5️⃣ Função
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def funcao_publica(request, token):
-    """
-    Endpoint público para retornar dados de função de um paciente,
-    usando o token de relatório público.
-    """
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({"detail": "Token inválido"}, status=404)
@@ -1162,34 +1165,30 @@ def funcao_publica(request, token):
     data_avaliacao = request.GET.get('data_avaliacao')
 
     if data_avaliacao:
-        queryset = TesteFuncao.objects.filter(
-            paciente=paciente,
-            data_avaliacao=data_avaliacao
-        ).order_by('id')  # garante ordem consistente
+        queryset = TesteFuncao.objects.filter(paciente=paciente, data_avaliacao=data_avaliacao).order_by('id')
     else:
-        # Pega o último registro de cada teste
-        subquery = (
-            TesteFuncao.objects
-            .filter(paciente=paciente)
-            .values('teste_id')
-            .annotate(ultima_data=Max('data_avaliacao'))
-        )
+        ultima_data = TesteFuncao.objects.filter(
+            paciente=paciente,
+            teste_id=OuterRef('teste_id')
+        ).values('data_avaliacao').order_by('-data_avaliacao')[:1]
+
         queryset = TesteFuncao.objects.filter(
             paciente=paciente,
-            data_avaliacao__in=[i['ultima_data'] for i in subquery]
-        ).order_by('id')  # garante ordem consistente
+            data_avaliacao=Subquery(ultima_data)
+        ).order_by('id')
 
     serializer = TesteFuncaoSerializer(queryset, many=True)
     return Response(serializer.data)
 
+
+# ============================
+# 6️⃣ Dor
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def dor_publica(request, token):
-    """
-    Endpoint público para retornar dados de dor de um paciente via token de relatório público.
-    """
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
     except RelatorioPublico.DoesNotExist:
         return Response({"detail": "Token inválido"}, status=404)
@@ -1197,46 +1196,44 @@ def dor_publica(request, token):
     data_avaliacao = request.GET.get('data_avaliacao')
 
     if data_avaliacao:
-        queryset = TesteDor.objects.filter(
-            paciente=paciente,
-            data_avaliacao=data_avaliacao
-        ).order_by('id')  # 🔹 garante ordem consistente
+        queryset = TesteDor.objects.filter(paciente=paciente, data_avaliacao=data_avaliacao).order_by('id')
     else:
-        # Pega o último registro de cada teste
-        subquery = (
-            TesteDor.objects
-            .filter(paciente=paciente)
-            .values('teste')
-            .annotate(ultima_data=Max('data_avaliacao'))
-        )
+        ultima_data = TesteDor.objects.filter(
+            paciente=paciente,
+            teste=OuterRef('teste')
+        ).values('data_avaliacao').order_by('-data_avaliacao')[:1]
+
         queryset = TesteDor.objects.filter(
             paciente=paciente,
-            data_avaliacao__in=[i['ultima_data'] for i in subquery]
-        ).order_by('id')  # 🔹 garante ordem consistente
+            data_avaliacao=Subquery(ultima_data)
+        ).order_by('id')
 
     serializer = TesteDorSerializer(queryset, many=True)
     return Response(serializer.data)
 
+
+# ============================
+# 7️⃣ Datas disponíveis
+# ============================
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def datas_disponiveis_publicas(request, token):
     try:
-        relatorio = RelatorioPublico.objects.get(token=token)
+        relatorio = RelatorioPublico.objects.select_related('paciente').get(token=token)
         paciente = relatorio.paciente
 
-        # 🔹 Obter datas distintas de cada modelo
-        datas_forca = ForcaMuscular.objects.filter(paciente=paciente).values_list('data_avaliacao', flat=True)
-        datas_mobilidade = Mobilidade.objects.filter(paciente=paciente).values_list('data_avaliacao', flat=True)
-        datas_estabilidade = Estabilidade.objects.filter(paciente=paciente).values_list('data_avaliacao', flat=True)
-        datas_funcao = TesteFuncao.objects.filter(paciente=paciente).values_list('data_avaliacao', flat=True)
-        datas_dor = TesteDor.objects.filter(paciente=paciente).values_list('data_avaliacao', flat=True)
+        # União otimizada via UNION SQL
+        todas_datas = (
+            ForcaMuscular.objects.filter(paciente=paciente).values_list('data_avaliacao')
+            .union(
+                Mobilidade.objects.filter(paciente=paciente).values_list('data_avaliacao'),
+                Estabilidade.objects.filter(paciente=paciente).values_list('data_avaliacao'),
+                TesteFuncao.objects.filter(paciente=paciente).values_list('data_avaliacao'),
+                TesteDor.objects.filter(paciente=paciente).values_list('data_avaliacao'),
+            )
+        )
 
-        # 🔹 Unir todas as datas em um set para garantir unicidade
-        todas_datas = set(datas_forca) | set(datas_mobilidade) | set(datas_estabilidade) | set(datas_funcao) | set(datas_dor)
-
-        # 🔹 Ordenar do mais recente para o mais antigo
-        datas_ordenadas = sorted(todas_datas, reverse=True)
-
+        datas_ordenadas = sorted({d[0] for d in todas_datas}, reverse=True)
         return Response(datas_ordenadas)
 
     except RelatorioPublico.DoesNotExist:
