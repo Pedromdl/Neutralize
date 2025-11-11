@@ -19,8 +19,16 @@ from dotenv import load_dotenv
 
 load_dotenv()  # isso vai carregar o .env automaticamente
 
-# Agora pode usar:
+
+# TOKENS DE API'S
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+# 🔑 Credenciais da API Strava
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+SITE_ID = int(os.getenv("SITE_ID", 1))
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -80,12 +88,6 @@ INSTALLED_APPS = [
     'agenteIA',
     'integracoes',
 ]
-
-# 🔑 Credenciais da API Strava
-STRAVA_CLIENT_ID = "184011"
-STRAVA_CLIENT_SECRET = "5566909ef3c9d60dfac9dc139224b713cf3e8220"
-BACKEND_URL = "http://localhost:8000"
-SITE_ID = 1
 
 #ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 #ACCOUNT_USERNAME_REQUIRED = False
