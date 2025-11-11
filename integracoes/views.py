@@ -1,15 +1,15 @@
+import os
 from django.shortcuts import redirect
 import time
 from datetime import datetime, timezone
-from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import requests
 from .models import StravaAccount
 
-STRAVA_CLIENT_ID = settings.STRAVA_CLIENT_ID
-STRAVA_CLIENT_SECRET = settings.STRAVA_CLIENT_SECRET
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 
 
 # 🔹 Função auxiliar para renovar o token automaticamente
@@ -86,8 +86,8 @@ def strava_status(request):
     if conta.token_expires_at < datetime.now(timezone.utc):
         refresh_url = "https://www.strava.com/oauth/token"
         refresh_data = {
-            "client_id": settings.STRAVA_CLIENT_ID,
-            "client_secret": settings.STRAVA_CLIENT_SECRET,
+            "client_id": os.getenv("STRAVA_CLIENT_ID"),
+            "client_secret": os.getenv("STRAVA_CLIENT_SECRET"),
             "grant_type": "refresh_token",
             "refresh_token": conta.refresh_token,
         }
@@ -153,8 +153,8 @@ def strava_atividades(request):
 
 # 🔹 Redireciona para o login do Strava
 def strava_authorize(request):
-    client_id = settings.STRAVA_CLIENT_ID
-    redirect_uri = f"{settings.BACKEND_URL}/api/strava/callback/"
+    client_id = os.getenv("STRAVA_CLIENT_ID"),
+    redirect_uri = f"{os.getenv('BACKEND_URL')}/api/strava/callback/"
     auth_url = (
         f"https://www.strava.com/oauth/authorize"
         f"?client_id={client_id}"
