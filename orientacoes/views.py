@@ -135,10 +135,8 @@ class HistoricoTreinoList(generics.ListAPIView):
     serializer_class = HistoricoTreinoSerializer
 
     def get_queryset(self):
-        # pega o email do user logado e busca a instância de Usuário
-        usuario = Usuário.objects.get(email=self.request.user.email)
-        return TreinoExecutado.objects.filter(paciente=usuario).order_by('-data')
-
+            usuario = Usuário.objects.get(user=self.request.user)
+            return TreinoExecutado.objects.filter(paciente=usuario).order_by('-data')
 
 import time
 import logging
