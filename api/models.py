@@ -15,7 +15,8 @@ class Usuário(models.Model):
 
     # Campos sensíveis criptografados
     cpf = EncryptedCharField(max_length=14, unique=True, blank=True, null=True)
-    email = EncryptedEmailField(unique=True, blank=True, null=True)
+    email = models.EmailField(unique=True, blank=True, null=True)  # novo campo só leitura
+
     telefone = EncryptedCharField(max_length=15, blank=True, null=True)
 
     # Endereço completo (criptografado)

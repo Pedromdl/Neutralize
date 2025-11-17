@@ -47,11 +47,14 @@ from .serializers import (
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, 
     PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer
 )
+from .mixins import ClinicFilterMixin
 
-class UsuárioViewSet(viewsets.ModelViewSet):
+
+class UsuárioViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
     queryset = Usuário.objects.all()
     serializer_class = UsuárioSerializer
     permission_classes = [IsAuthenticated]
+    clinica_field = "clinica"
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

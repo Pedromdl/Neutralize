@@ -16,5 +16,4 @@ def log_acesso(usuario, paciente_id, acao, campo, request=None, detalhes=None):
         campo=campo,
         ip=ip,
         detalhes=detalhes,
-        tenant=tenant
     )

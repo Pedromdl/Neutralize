@@ -9,7 +9,6 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from google.oauth2 import id_token
-from google.auth.transport import requests
 
 from .serializers import ClinicaSerializer, CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
 from .models import Clinica, DocumentoLegal, CustomUser
@@ -59,51 +58,49 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import CustomUser  # seu modelo CustomUser
 
 class GoogleAuthView(APIView):
-    """
-    Login via Google apenas para usuários existentes.
-    Atualiza dados do Google, bloqueia emails não registrados.
-    """
-
     def post(self, request):
         token = request.data.get("token")
         client_id = getattr(settings, "GOOGLE_CLIENT_ID", None)
 
-        if not client_id:
-            return Response(
-                {"error": "GOOGLE_CLIENT_ID não configurado no backend"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
         if not token:
-            return Response({"error": "Token não enviado"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Token não enviado"}, status=400)
 
         try:
-            # Valida o token no Google
-            idinfo = id_token.verify_oauth2_token(token, requests.Request(), client_id)
-
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
             email = idinfo.get("email")
             first_name = idinfo.get("given_name", "")
             last_name = idinfo.get("family_name", "")
 
             if not email:
-                return Response({"error": "E-mail não encontrado no token"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Email não encontrado no token"}, status=400)
 
-            # Procura usuário existente
             try:
                 user = CustomUser.objects.get(email=email)
-
                 # Atualiza dados do Google
                 user.first_name = first_name or user.first_name
                 user.last_name = last_name or user.last_name
                 user.save()
-
             except CustomUser.DoesNotExist:
-                return Response({"error": "Email não registrado no sistema."}, status=status.HTTP_400_BAD_REQUEST)
+                # Procura no modelo Usuário
+                try:
+                    paciente = Usuário.objects.get(email=email)
+                    user = CustomUser.objects.create_user(
+                        email=email,
+                        first_name=first_name or paciente.nome.split()[0],
+                        last_name=last_name or " ".join(paciente.nome.split()[1:]),
+                        role="paciente",
+                        clinica=paciente.clinica
+                    )
+                    # Associa o CustomUser ao Usuário
+                    paciente.user = user
+                    paciente.save()
+                except Usuário.DoesNotExist:
+                    return Response({"error": "Email não registrado no sistema."}, status=400)
 
             # Gera tokens JWT
             refresh = RefreshToken.for_user(user)
@@ -113,8 +110,7 @@ class GoogleAuthView(APIView):
             })
 
         except ValueError as e:
-            print("Erro na validação do token:", e)
-            return Response({"error": "Token inválido"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Token inválido"}, status=400)
         
 from django.contrib.auth import authenticate
 
@@ -169,50 +165,59 @@ class RegistrarAceiteDocumentoView(generics.CreateAPIView):
 
 import random, string
 
-
 class RegisterAdminClinicaView(APIView):
     """
     Cria uma clínica e um CustomUser administrador a partir do email e nome da clínica.
+    A senha é gerada automaticamente e login será via Google ou tokens JWT.
     """
 
     def post(self, request):
-        email = request.data.get("email")
-        nome_clinica = request.data.get("nome")
+        email = request.data.get("email", "").strip()
+        nome_clinica = request.data.get("nome", "").strip()
 
+        # Validação dos campos obrigatórios
         if not all([email, nome_clinica]):
             return Response({"error": "Nome da clínica e email são obrigatórios."}, status=400)
 
-        if CustomUser.objects.filter(email=email).exists():
+        # Valida email
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+        from django.db import IntegrityError
+        import random, string
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({"error": "Email inválido."}, status=400)
+
+        # Checa duplicidade de email
+        if CustomUser.objects.filter(email__iexact=email).exists():
             return Response({"error": "Email já cadastrado."}, status=400)
 
-        # Cria a clínica
-        clinica = Clinica.objects.create(nome=nome_clinica)
+        # Cria clínica
+        try:
+            clinica = Clinica.objects.create(nome=nome_clinica)
+        except IntegrityError:
+            return Response({"error": "Já existe uma clínica com esse nome."}, status=400)
 
-        # Gera uma senha aleatória para o admin
+        # Gera senha aleatória
         senha_aleatoria = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
 
-        # Cria o usuário admin
+        # Cria usuário admin
         user = CustomUser.objects.create_user(
             email=email,
             first_name=nome_clinica,
             role="admin",
             clinica=clinica,
-            is_staff=True
+            is_staff=True,
+            password=senha_aleatoria
         )
 
-        # Cria ou vincula Usuário
-        usuario, _ = Usuário.objects.get_or_create(
-            email=email,
-            defaults={
-                "nome": nome_clinica,
-                "clinica": clinica,
-                "user": user
-            }
-        )
-
-        # Retorna tokens JWT para login
+        # Retorna tokens JWT
+        from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
         return Response({
             "refresh": str(refresh),
-            "access": str(refresh.access_token)
+            "access": str(refresh.access_token),
+            "senha_gerada": senha_aleatoria  # opcional, para enviar por email caso queira
         })

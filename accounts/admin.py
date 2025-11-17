@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db import models
+from django import forms
+
 from .models import CustomUser, Clinica
 
 @admin.register(Clinica)
 class ClinicaAdmin(admin.ModelAdmin):
-    list_display = ("nome", "cnpj", "telefone", "data_criacao")
+    list_display = ("id", "nome", "cnpj", "telefone", "data_criacao")
     search_fields = ("nome", "cnpj")
     list_filter = ("data_criacao",)
     ordering = ("nome",)
@@ -14,10 +17,18 @@ class ClinicaAdmin(admin.ModelAdmin):
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
 
-    list_display = ("id", "email", "first_name", "last_name", "clinica", "is_staff", "is_active")
+    list_display = ("id", "email", "first_name", "last_name", "clinica_id_display", "role", "is_staff", "is_active")
     list_filter = ("is_staff", "is_active", "clinica")
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
+
+    def clinica_id_display(self, obj):
+        return obj.clinica.id if obj.clinica else "-"
+    clinica_id_display.short_description = "Clinica ID"
+
+    formfield_overrides = {
+        models.ForeignKey: {'widget': forms.Select(attrs={'style': 'width: 200px;'})},  # muda o tamanho do select
+    }
 
     fieldsets = (
         (None, {"fields": ("email", "password", "role", "clinica")}),
