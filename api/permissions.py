@@ -1,5 +1,12 @@
 from rest_framework.permissions import BasePermission
 
+class IsAdminClinica(BasePermission):
+    """
+    Permite acesso apenas a usuários com role 'admin'.
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'admin'
+    
 class IsProfissional(BasePermission):
     """
     Permite acesso apenas a usuários com role 'profissional'.
@@ -14,3 +21,4 @@ class IsPaciente(BasePermission):
     """
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and request.user.role == 'paciente'
+

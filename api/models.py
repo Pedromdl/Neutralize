@@ -2,6 +2,9 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedEmailField, EncryptedDateField, EncryptedTextField
+from accounts.models import CustomUser, Clinica
+
 import secrets
 
 
@@ -9,12 +12,34 @@ import secrets
 # Modelos de Usuário
 class Usuário(models.Model):
     nome = models.CharField(max_length=100)
-    cpf = models.CharField(max_length=14, unique=True, blank=True, null=True)  # Formato: 000.000.000-00
-    email = models.EmailField(unique=True, blank=True, null=True)
-    telefone = models.CharField(max_length=15, blank=True, null=True)
-    endereço = models.CharField(max_length=255, blank=True, null=True)
-    data_de_nascimento = models.DateField(blank=True, null=True)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="usuario")
+
+    # Campos sensíveis criptografados
+    cpf = EncryptedCharField(max_length=14, unique=True, blank=True, null=True)
+    email = EncryptedEmailField(unique=True, blank=True, null=True)
+    telefone = EncryptedCharField(max_length=15, blank=True, null=True)
+
+    # Endereço completo (criptografado)
+    cep = EncryptedCharField(max_length=9, blank=True, null=True)
+    rua = EncryptedCharField(max_length=255, blank=True, null=True)
+    numero = EncryptedCharField(max_length=20, blank=True, null=True)
+    bairro = EncryptedCharField(max_length=100, blank=True, null=True)
+    cidade = EncryptedCharField(max_length=100, blank=True, null=True)
+    estado = EncryptedCharField(max_length=2, blank=True, null=True)
+    complemento = EncryptedCharField(max_length=255, blank=True, null=True)
+
+    # Data de nascimento
+    data_de_nascimento = EncryptedDateField(blank=True, null=True)
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="usuario"
+    )
+    
+    clinica = models.ForeignKey(Clinica, on_delete=models.CASCADE, null=True, blank=True)
+
 
     def __str__(self):
         return self.nome
@@ -141,12 +166,9 @@ class PreAvaliacao(models.Model):
 
 
 class Anamnese(models.Model):
-    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE)  # relacionamento com paciente
-    conteudo_html = models.TextField()  # para salvar o HTML da avaliação
+    paciente = models.ForeignKey(Usuário, on_delete=models.CASCADE)
+    conteudo_html = EncryptedTextField()  # criptografado
     data_avaliacao = models.DateField(verbose_name="Data")
-
-    def __str__(self):
-        return f"Avaliação do paciente {self.paciente.nome} em {self.data_avaliacao}"
 
 # Modelo de Evento
 # Representa eventos como agendas, consultas
@@ -205,3 +227,17 @@ class RelatorioPublico(models.Model):
 
     def __str__(self):
         return f"Relatório público de {self.paciente.nome if hasattr(self.paciente, 'nome') else self.paciente}"
+
+# LOGS DE ACESSO
+
+class DataAccessLog(models.Model):
+    usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    paciente_id = models.IntegerField()  # ID do paciente cujo dado foi acessado
+    acao = models.CharField(max_length=50)  # "visualizou", "editou", "deletou"
+    campo = models.CharField(max_length=100)  # "nome", "laudo", etc
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)  # opcional
+    detalhes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.usuario} {self.acao} {self.campo} em {self.timestamp}"

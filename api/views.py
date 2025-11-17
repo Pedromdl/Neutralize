@@ -48,11 +48,56 @@ from .serializers import (
     PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer
 )
 
-
 class UsuárioViewSet(viewsets.ModelViewSet):
     queryset = Usuário.objects.all()
     serializer_class = UsuárioSerializer
-    permission_classes = [IsAuthenticated, IsProfissional]  # apenas profissionais podem acessar
+    permission_classes = [IsAuthenticated]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Chamar log
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "id", None),  # ID do paciente ou usuário
+            acao="visualizou",
+            campo="usuário",
+            request=request,
+            detalhes="Visualizou dados de usuário"
+        )
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Chamar log
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "id", None),
+            acao="editou",
+            campo="usuário",
+            request=request,
+            detalhes="Atualizou dados de usuário"
+        )
+
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Chamar log
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "id", None),
+            acao="deletou",
+            campo="usuário",
+            request=request,
+            detalhes="Deletou usuário"
+        )
+
+        return super().destroy(request, *args, **kwargs)
 
 class ForcaMuscularViewSet(viewsets.ModelViewSet):
     queryset = ForcaMuscular.objects.all()
@@ -358,7 +403,50 @@ class AnamneseViewSet(viewsets.ModelViewSet):
     queryset = Anamnese.objects.all()
     serializer_class = AnamneseSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['paciente']  # <- permite filtrar por ?paciente=ID
+    filterset_fields = ['paciente']
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "paciente_id", None),
+            acao="visualizou",
+            campo="anamnese",
+            request=request,
+            detalhes="Visualizou anamnese"
+        )
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "paciente_id", None),
+            acao="editou",
+            campo="anamnese",
+            request=request,
+            detalhes="Atualizou anamnese"
+        )
+
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "paciente_id", None),
+            acao="deletou",
+            campo="anamnese",
+            request=request,
+            detalhes="Deletou anamnese"
+        )
+
+        return super().destroy(request, *args, **kwargs)
 
 
 def remover_cor_html(html):
@@ -529,7 +617,6 @@ def gerar_relatorio_pdf(request, paciente_id):
         "cpf": paciente.cpf,
         "email": paciente.email,
         "telefone": paciente.telefone,
-        "endereço": paciente.endereço,
         "data_de_nascimento": paciente.data_de_nascimento,
         "idade": idade,
         "grafico_forca": grafico_forca_base64,
@@ -946,7 +1033,6 @@ def visualizar_relatorio(request, paciente_id):
         "cpf": paciente.cpf,
         "email": paciente.email,
         "telefone": paciente.telefone,
-        "endereço": paciente.endereço,
         "data_de_nascimento": paciente.data_de_nascimento,
         "idade": idade,
         "logo_base64": logo_base64,
@@ -1238,3 +1324,22 @@ def datas_disponiveis_publicas(request, token):
 
     except RelatorioPublico.DoesNotExist:
         return Response({'detail': 'Token inválido.'}, status=404)
+
+
+from .utils import log_acesso
+
+def get_paciente_detail(request, paciente_id):
+    paciente = Usuário.objects.get(id=paciente_id)
+
+    # Registrar log de acesso
+    log_acesso(
+        usuario=request.user,
+        paciente_id=paciente.id,
+        acao="visualizou",
+        campo="prontuário",
+        request=request
+    )
+
+    return Response({
+        "nome": paciente.nome,
+    })

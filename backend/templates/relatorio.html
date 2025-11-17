@@ -102,6 +102,24 @@
       text-align: center;
       margin-top: 20px;
     }
+
+    .personal-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .personal-data-table th {
+      text-align: left;
+      font-weight: bold;
+      padding: 4px 8px;
+      width: 25%;
+    }
+
+    .personal-data-table td {
+      padding: 4px 8px;
+      width: 25%;
+    }
   </style>
 </head>
 
@@ -122,22 +140,26 @@
     <main class="container">
       <section class="card personal-data">
         <h2>Dados Pessoais</h2>
-        <dl>
-          <dt><strong>Nome:</strong></dt>
-          <dd>{{ nome }}</dd>
-          <dt><strong>Idade:</strong></dt>
-          <dd>{{ idade }}</dd>
-          <dt><strong>CPF:</strong></dt>
-          <dd>{{ cpf }}</dd>
-          <dt><strong>Email:</strong></dt>
-          <dd>{{ email }}</dd>
-          <dt><strong>Telefone:</strong></dt>
-          <dd>{{ telefone }}</dd>
-          <dt><strong>Endereço:</strong></dt>
-          <dd>{{ endereço }}</dd>
-          <dt><strong>Data de Nascimento:</strong></dt>
-          <dd>{{ data_de_nascimento }}</dd>
-        </dl>
+        <table class="personal-data-table">
+          <tr>
+            <th>Nome:</th>
+            <td>{{ nome }}</td>
+            <th>Idade:</th>
+            <td>{{ idade }}</td>
+          </tr>
+          <tr>
+            <th>CPF:</th>
+            <td>{{ cpf }}</td>
+            <th>Email:</th>
+            <td>{{ email }}</td>
+          </tr>
+          <tr>
+            <th>Telefone:</th>
+            <td>{{ telefone }}</td>
+            <th>Data de Nascimento:</th>
+            <td>{{ data_de_nascimento }}</td>
+          </tr>
+        </table>
       </section>
 
       <section class="card">

@@ -29,6 +29,10 @@ STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 SITE_ID = int(os.getenv("SITE_ID", 1))
 
+#CREDENCIAIS DE ENCRIPTAÇÃO:
+FIELD_ENCRYPTION_KEY = os.environ.get("ENCRYPTED_FIELDS_KEY").encode()
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
