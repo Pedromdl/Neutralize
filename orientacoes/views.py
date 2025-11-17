@@ -135,8 +135,12 @@ class HistoricoTreinoList(generics.ListAPIView):
     serializer_class = HistoricoTreinoSerializer
 
     def get_queryset(self):
-            usuario = Usuário.objects.get(user=self.request.user)
-            return TreinoExecutado.objects.filter(paciente=usuario).order_by('-data')
+        usuario = Usuário.objects.get(user=self.request.user)
+        return (
+            TreinoExecutado.objects.filter(paciente=usuario)
+                .select_related("treino")    # ⬅️ evita N+1
+                .order_by("-data")
+        )
 
 import time
 import logging
