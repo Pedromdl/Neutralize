@@ -121,12 +121,12 @@ class LoginView(APIView):
 
     def post(self, request):
         email = request.data.get("email")
-        senha = request.data.get("senha")
+        password = request.data.get("password")
 
-        if not all([email, senha]):
+        if not all([email, password]):
             return Response({"error": "Email e senha são obrigatórios."}, status=400)
 
-        user = authenticate(request, email=email, password=senha)
+        user = authenticate(request, email=email, password=password)
         if user is None:
             return Response({"error": "Usuário ou senha inválidos."}, status=401)
 
@@ -163,32 +163,36 @@ class RegistrarAceiteDocumentoView(generics.CreateAPIView):
         def perform_create(self, serializer):
             serializer.save(usuario=self.request.user, data_aceite=timezone.now())
 
-import random, string
-
 class RegisterAdminClinicaView(APIView):
     """
-    Cria uma clínica e um CustomUser administrador a partir do email e nome da clínica.
-    A senha é gerada automaticamente e login será via Google ou tokens JWT.
+    Cria uma clínica e um CustomUser administrador.
+    Agora inclui first_name e last_name fornecidos pelo frontend.
     """
 
     def post(self, request):
         email = request.data.get("email", "").strip()
         nome_clinica = request.data.get("nome", "").strip()
+        password = request.data.get("password", "").strip()
+        first_name = request.data.get("first_name", "").strip()
+        last_name = request.data.get("last_name", "").strip()
 
         # Validação dos campos obrigatórios
-        if not all([email, nome_clinica]):
-            return Response({"error": "Nome da clínica e email são obrigatórios."}, status=400)
+        if not all([email, nome_clinica, password, first_name, last_name]):
+            return Response({"error": "Todos os campos são obrigatórios."}, status=400)
 
         # Valida email
         from django.core.validators import validate_email
         from django.core.exceptions import ValidationError
         from django.db import IntegrityError
-        import random, string
 
         try:
             validate_email(email)
         except ValidationError:
             return Response({"error": "Email inválido."}, status=400)
+
+        # Valida senha mínima
+        if len(password) < 6:
+            return Response({"error": "A senha deve ter pelo menos 6 caracteres."}, status=400)
 
         # Checa duplicidade de email
         if CustomUser.objects.filter(email__iexact=email).exists():
@@ -200,24 +204,23 @@ class RegisterAdminClinicaView(APIView):
         except IntegrityError:
             return Response({"error": "Já existe uma clínica com esse nome."}, status=400)
 
-        # Gera senha aleatória
-        senha_aleatoria = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-
         # Cria usuário admin
         user = CustomUser.objects.create_user(
             email=email,
-            first_name=nome_clinica,
+            first_name=first_name,
+            last_name=last_name,
             role="admin",
             clinica=clinica,
             is_staff=True,
-            password=senha_aleatoria
+            password=password
         )
 
         # Retorna tokens JWT
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
+
         return Response({
             "refresh": str(refresh),
             "access": str(refresh.access_token),
-            "senha_gerada": senha_aleatoria  # opcional, para enviar por email caso queira
-        })
+            "message": "Clínica e administrador criados com sucesso."
+        }, status=201)
