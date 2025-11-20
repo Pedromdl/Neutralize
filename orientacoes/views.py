@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework import generics
 
+from orientacoes.paginations import BancoExercicioPagination
+
 # 🔹 Models
 from .models import Pasta, Secao, BancodeExercicio, Treino, TreinoExecutado, SerieRealizada, ExercicioExecutado, ExercicioPrescrito
 from api.models import Usuário
@@ -70,16 +72,26 @@ class SecaoViewSet(viewsets.ModelViewSet):
 # =========================
 # Orientações
 # =========================
+
 class BancodeExercicioViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gerenciar Bancos de Exercício
     """
     queryset = BancodeExercicio.objects.all()
     serializer_class = BancodeExercicioSerializer
+    pagination_class = BancoExercicioPagination
 
-    # 🔹 Adiciona SearchFilter para pesquisa
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['titulo']  # permite ?search=palavra
+
+    # 🔹 Adiciona Search + Ordering
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+
+    # Campos permitidos para ordenação
+    ordering_fields = ["id", "titulo"]
+
+    # Ordenação padrão
+    ordering = ["titulo"]
+
+    search_fields = ["titulo"]
 
     def create(self, request, *args, **kwargs):
         # 🔹 Caso o frontend envie uma LISTA de objetos

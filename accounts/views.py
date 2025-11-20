@@ -2,13 +2,15 @@ from django.conf import settings  # importe settings do Django
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from google.oauth2 import id_token
+
+from api.mixins import ClinicFilterMixin
 
 from .serializers import ClinicaSerializer, CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
 from .models import Clinica, DocumentoLegal, CustomUser
@@ -48,11 +50,17 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         print("Usuário autenticado na requisição:", self.request.user)
         return self.request.user
-
-class UserListView(generics.ListAPIView):
+    
+class UserListView(ClinicFilterMixin, generics.ListAPIView):
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.IsAdminUser]
-    queryset = User.objects.all().order_by('id')  # Adicione um order_by aqui
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = CustomUser.objects.all()
+    clinica_field = "clinica"   # <-- ESSENCIAL
+    filter_backends = [filters.OrderingFilter]  # <— habilita ordenação
+    ordering_fields = ['id', 'first_name', 'email', 'role']   # <— campos liberados
+    ordering = ['id']  # ordenação padrão
+
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
