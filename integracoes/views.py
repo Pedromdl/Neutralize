@@ -163,3 +163,32 @@ def strava_authorize(request):
         f"&scope=read,activity:read_all"
     )
     return HttpResponseRedirect(auth_url)
+
+
+# INTEGRAÇÃO INSTAGRAM
+
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.conf import settings
+import os
+from dotenv import load_dotenv
+
+# Carrega o .env
+load_dotenv()  # só precisa se não estiver carregando em settings.py
+
+class InstagramFeedView(APIView):
+    def get(self, request):
+        instagram_user_id = os.getenv("INSTAGRAM_USER_ID")
+        access_token = os.getenv("INSTAGRAM_LONG_TOKEN")
+
+        url = (
+            f"https://graph.facebook.com/v21.0/{instagram_user_id}/media"
+            "?fields=id,media_url,media_type,thumbnail_url,caption,permalink"
+            f"&access_token={access_token}"
+        )
+
+        response = requests.get(url)
+        data = response.json()
+
+        return Response(data)
