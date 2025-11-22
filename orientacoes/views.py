@@ -15,7 +15,7 @@ from api.models import Usuário
 # 🔹 Serializers
 from .serializers import (
     HistoricoTreinoSerializer, PastaSerializer, SecaoSerializer, BancodeExercicioSerializer, TreinoSerializer, TreinoListSerializer, TreinoExecutadoSerializer, SerieRealizadaSerializer,
-    ExercicioPrescritoSerializer
+    ExercicioPrescritoSerializer, TreinoExecutadoAdminSerializer
 )
 # =========================
 # Tela Inicial
@@ -157,7 +157,7 @@ class HistoricoTreinoList(generics.ListAPIView):
 import time
 import logging
 from django.db import connection
-from django.db.models import Max, F, Prefetch
+from django.db.models import Max, F, Prefetch, Avg, Count, Q
 
 logger = logging.getLogger(__name__)
 
@@ -173,25 +173,31 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
         return response
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = TreinoExecutado.objects.filter(paciente__user=user)
-
-        exercicio_id = self.request.query_params.get("exercicio")
-        if exercicio_id:
-            exercicios_prefetch = Prefetch(
-                "exercicios",
-                queryset=ExercicioExecutado.objects.filter(
-                    exercicio_id=exercicio_id
-                ).prefetch_related("series"),
+        queryset = super().get_queryset()
+        
+        queryset = queryset.select_related(
+            'paciente',
+            'paciente__user',
+            'treino'
+        ).prefetch_related(
+            Prefetch(
+                'exercicios',
+                queryset=ExercicioExecutado.objects.select_related(
+                    'exercicio__orientacao'  # 🔹 CAMINHO CORRETO
+                ).prefetch_related('series')
             )
-        else:
-            exercicios_prefetch = Prefetch(
-                "exercicios",
-                queryset=ExercicioExecutado.objects.all().prefetch_related("series"),
-            )
+        ).annotate(
+            paciente_nome=Concat(
+                F('paciente__user__first_name'),
+                Value(' '),
+                F('paciente__user__last_name'),
+                output_field=CharField()
+            ),
+            treino_nome=F('treino__nome')
+        )
 
-        return queryset.prefetch_related(exercicios_prefetch)
-
+        return queryset.order_by('-data', '-id')
+    
     def create(self, request, *args, **kwargs):
         try:
             paciente = Usuário.objects.get(user=request.user)
@@ -332,3 +338,81 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
 class SerieRealizadaViewSet(viewsets.ModelViewSet):
     queryset = SerieRealizada.objects.all().select_related("exercicio", "execucao")
     serializer_class = SerieRealizadaSerializer
+
+from api.mixins import ClinicFilterMixin
+from rest_framework.pagination import PageNumberPagination
+
+
+from api.mixins import ClinicFilterMixin
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+class TreinoExecutadoPagination(PageNumberPagination):
+    page_size = 15
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+from django.db.models import F, Value, CharField
+from django.db.models.functions import Concat
+
+class TreinoExecutadoAdminViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+    """
+    ViewSet administrativo OTIMIZADO - zero queries N+1
+    """
+    serializer_class = TreinoExecutadoAdminSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = TreinoExecutadoPagination
+    queryset = TreinoExecutado.objects.all()
+    clinica_field = "paciente__clinica"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # 🔹 FILTRO POR BUSCA (search) - CORRIGIDO
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            # Remover espaços extras e dividir em termos
+            search_terms = search_query.strip().split()
+            
+            # Criar query dinâmica para cada termo
+            query = Q()
+            for term in search_terms:
+                query &= (
+                    Q(paciente__user__first_name__icontains=term) |
+                    Q(paciente__user__last_name__icontains=term) |
+                    Q(treino__nome__icontains=term)
+                )
+            
+            queryset = queryset.filter(query)
+
+        # 🔹 QUERY OTIMIZADA COM ANNOTATE
+        queryset = queryset.select_related(
+            'paciente',
+            'paciente__user',
+            'treino'
+        ).prefetch_related(
+            Prefetch(
+                'exercicios',
+                queryset=ExercicioExecutado.objects.select_related(
+                    'exercicio',
+                    'exercicio__orientacao'
+                ).prefetch_related('series')
+            )
+        ).annotate(
+            paciente_nome=Concat(
+                F('paciente__user__first_name'),
+                Value(' '),
+                F('paciente__user__last_name'),
+                output_field=CharField()
+            ),
+            treino_nome=F('treino__nome')
+        ).order_by('-data', '-id')
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        start = time.time()
+        response = super().list(request, *args, **kwargs)
+        duration = time.time() - start
+        logger.info(f"[ADMIN VIEW OTIMIZADO] {request.path} levou {duration:.3f}s")
+        return response

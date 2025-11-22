@@ -8,6 +8,7 @@ from .views import (
     TreinoViewSet,
     TreinoExecutadoViewSet,
     ExercicioPrescritoViewSet,
+    TreinoExecutadoAdminViewSet,
     resumo_treinos
 )
 
@@ -19,6 +20,7 @@ router.register(r'bancoexercicios', BancodeExercicioViewSet, basename='bancoexer
 router.register(r'exerciciosprescritos', ExercicioPrescritoViewSet, basename='exercicioprescrito')
 router.register(r'treinos', TreinoViewSet, basename='treino')
 router.register(r'treinosexecutados', TreinoExecutadoViewSet, basename='treinoexecutado')
+router.register(r'admin-treinosexecutados', TreinoExecutadoAdminViewSet, basename='admin-treinoexecutado')
 
 # 🔹 URLs finais
 urlpatterns = [

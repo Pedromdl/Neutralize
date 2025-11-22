@@ -19,7 +19,7 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 class CustomUserSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'cpf', 'address', 'phone', 'birth_date', 'role', 'is_staff')
+        fields = ('id', 'email', 'photo_google', 'first_name', 'last_name', 'cpf', 'address', 'phone', 'birth_date', 'role', 'is_staff')
 
 class DocumentoLegalSerializer(serializers.ModelSerializer):
     class Meta:

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db import models
 from django import forms
+from django.utils.html import format_html
 
 from .models import CustomUser, Clinica
 
@@ -17,7 +18,25 @@ class ClinicaAdmin(admin.ModelAdmin):
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
 
-    list_display = ("id", "email", "first_name", "last_name", "clinica_id_display", "role", "is_staff", "is_active")
+    list_display = (
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "photo_google_display",  # ✅ novo
+        "clinica_id_display",
+        "role",
+        "is_staff",
+        "is_active",
+    )
+
+    # campo custom para exibir a foto como URL ou img
+    def photo_google_display(self, obj):
+        if obj.photo_google:
+            return format_html('<img src="{}" width="50" style="border-radius:50%;" />', obj.photo_google)
+        return "-"
+    photo_google_display.short_description = "Foto Google"
+
     list_filter = ("is_staff", "is_active", "clinica")
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
@@ -27,13 +46,21 @@ class CustomUserAdmin(UserAdmin):
     clinica_id_display.short_description = "Clinica ID"
 
     formfield_overrides = {
-        models.ForeignKey: {'widget': forms.Select(attrs={'style': 'width: 200px;'})},  # muda o tamanho do select
+        models.ForeignKey: {'widget': forms.Select(attrs={'style': 'width: 200px;'})},
     }
 
     fieldsets = (
         (None, {"fields": ("email", "password", "role", "clinica")}),
         ("Informações Pessoais", {
-            "fields": ("first_name", "last_name", "cpf", "address", "phone", "birth_date")
+            "fields": (
+                "first_name",
+                "last_name",
+                "cpf",
+                "address",
+                "phone",
+                "birth_date",
+                "photo_google",  # ✅ adiciona aqui também
+            )
         }),
         ("Permissões", {
             "fields": ("is_staff", "is_active", "is_superuser", "groups", "user_permissions")

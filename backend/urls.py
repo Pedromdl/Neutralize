@@ -9,7 +9,7 @@ urlpatterns = [
     # Suas APIs
     path('api/', include('accounts.urls')),
     path('api/', include('api.urls')),
-    path('api/orientacoes/', include('orientacoes.urls')),
+    path('api/', include('orientacoes.urls')),
     path('api/', include('eventos.urls')),
     path('api/', include('financeiro.urls')),
     path('api/agenteIA/', include('agenteIA.urls')),

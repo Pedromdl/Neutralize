@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
-from encrypted_model_fields.fields import EncryptedCharField, EncryptedEmailField, EncryptedDateField, EncryptedTextField
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField, EncryptedTextField
 from accounts.models import CustomUser, Clinica
 
 import secrets
@@ -156,6 +156,7 @@ class TesteDor(models.Model):
 class PreAvaliacao(models.Model):
     titulo = models.CharField(max_length=200)
     texto = models.TextField()
+    clinica = models.ForeignKey(Clinica, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         verbose_name = "Pré-Avaliação"

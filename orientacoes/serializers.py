@@ -64,17 +64,19 @@ class SerieRealizadaSerializer(serializers.ModelSerializer):
     class Meta:
         model = SerieRealizada
         fields = ['exercicio', 'numero', 'repeticoes', 'carga']
-
+        
 class ExercicioExecutadoSerializer(serializers.ModelSerializer):
-    # Mantém o serializer antigo para não quebrar nada
-    series = SerieRealizadaSerializer(many=True, read_only=True)
+    exercicio_nome = serializers.CharField(
+        source='exercicio.orientacao.titulo',  # 🔹 CAMINHO CORRETO
+        read_only=True
+    )
     
-    # Novo campo JSON
-    seriess = serializers.JSONField(read_only=True)  # ou read/write conforme seu teste
-
     class Meta:
         model = ExercicioExecutado
-        fields = ["id", "exercicio", "rpe", "series", "seriess"]
+        fields = [
+            "id", "exercicio", "exercicio_nome",
+            "rpe", "series", "seriess"
+        ]
 
 class TreinoExecutadoSerializer(serializers.ModelSerializer):
     exercicios = ExercicioExecutadoSerializer(many=True, read_only=True)
@@ -85,6 +87,37 @@ class TreinoExecutadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = TreinoExecutado
         fields = ["id", "treino", "treino_detalhes", "paciente", "finalizado", "tempo_total", "data", "exercicios"]
+
+class TreinoExecutadoAdminSerializer(serializers.ModelSerializer):
+    exercicios = ExercicioExecutadoSerializer(many=True, read_only=True)
+    
+    # 🔹 Campos já computados no banco - ZERO queries extras
+    paciente_nome = serializers.CharField(read_only=True)
+    treino_nome = serializers.CharField(read_only=True)
+    
+    # 🔹 ADICIONAR paciente_id como read_only
+    paciente_id = serializers.IntegerField(source='paciente.id', read_only=True)
+    
+    # 🔹 Campos write_only para criação/atualização
+    paciente = serializers.PrimaryKeyRelatedField(
+        queryset=Usuário.objects.all(),
+        write_only=True
+    )
+    treino = serializers.PrimaryKeyRelatedField(
+        queryset=Treino.objects.all(), 
+        write_only=True
+    )
+
+    class Meta:
+        model = TreinoExecutado
+        fields = [
+            "id", 
+            "paciente_id", "paciente_nome",  # 🔹 Read only
+            "paciente", "treino",            # 🔹 Write only  
+            "treino_nome",      
+            "finalizado", "tempo_total", "data", 
+            "exercicios"
+        ]
 
 class HistoricoTreinoSerializer(serializers.ModelSerializer):
     treino_nome = serializers.CharField(source='treino.nome', read_only=True)

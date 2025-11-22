@@ -31,7 +31,18 @@ class EstabilidadeSerializer(serializers.ModelSerializer):
 class CategoriaTesteSerializer(serializers.ModelSerializer):
     class Meta:
         model = CategoriaTeste
-        fields = '__all__'
+        fields = ['id', 'nome']
+        read_only_fields = ['id']
+
+    def validate_nome(self, value):
+        """
+        Validação customizada para o campo nome
+        """
+        if not value.strip():
+            raise serializers.ValidationError("O nome da categoria não pode estar vazio.")
+        
+        # Converte para title case para padronização
+        return value.strip().title()
 
 class TodosTestesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -58,7 +69,7 @@ class TesteDorSerializer(serializers.ModelSerializer):
 class PreAvaliacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreAvaliacao
-        fields = ['id', 'titulo', 'texto']
+        fields = ['id', 'titulo', 'texto', 'clinica']
 
 class AnamneseSerializer(serializers.ModelSerializer):
     class Meta:

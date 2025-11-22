@@ -12,6 +12,7 @@ from datetime import date, timedelta
 # IMPORTAÇÕES TERCEIROS (MATPLOTLIB ANTES DE TUDO)
 # ========================
 import matplotlib
+
 matplotlib.use('Agg')  # backend não interativo, deve ser chamado antes de pyplot
 import matplotlib.pyplot as plt
 
@@ -234,9 +235,54 @@ class EstabilidadeViewSet(viewsets.ModelViewSet):
         return Response(datas)
 
 
+# views.py
+from rest_framework import viewsets, permissions, serializers
+from .models import CategoriaTeste
+from .serializers import CategoriaTesteSerializer
+
 class CategoriaTesteViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciar categorias de teste.
+    """
     queryset = CategoriaTeste.objects.all()
     serializer_class = CategoriaTesteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Filtro opcional por nome
+        """
+        queryset = CategoriaTeste.objects.all()
+        nome = self.request.query_params.get('nome', None)
+        
+        if nome:
+            queryset = queryset.filter(nome__icontains=nome)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        """
+        Garante que não haja duplicação (já que nome é unique)
+        """
+        nome = serializer.validated_data.get('nome')
+        if CategoriaTeste.objects.filter(nome__iexact=nome).exists():
+            raise serializers.ValidationError(
+                {'nome': 'Uma categoria com este nome já existe.'}
+            )
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """
+        Garante que a atualização não crie duplicação
+        """
+        nome = serializer.validated_data.get('nome')
+        instance = self.get_object()
+        
+        if CategoriaTeste.objects.filter(nome__iexact=nome).exclude(id=instance.id).exists():
+            raise serializers.ValidationError(
+                {'nome': 'Uma categoria com este nome já existe.'}
+            )
+        serializer.save()
 
 
 class TodosTestesViewSet(viewsets.ModelViewSet):
@@ -398,9 +444,11 @@ class DatasDisponiveisAPIView(APIView):
         except Exception as e:
             return Response({'erro': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class PreAvaliacaoViewSet(viewsets.ModelViewSet):
+class PreAvaliacaoViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = PreAvaliacao.objects.all()
     serializer_class = PreAvaliacaoSerializer
+    clinica_field = "clinica"
 
 class AnamneseViewSet(viewsets.ModelViewSet):
     queryset = Anamnese.objects.all()

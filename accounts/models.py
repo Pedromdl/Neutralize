@@ -37,6 +37,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('paciente', 'Paciente'),
     ]
     clinica = models.ForeignKey('Clinica', on_delete=models.CASCADE, null=True, blank=True, related_name='usuarios')
+    photo_google = models.URLField(blank=True, null=True)
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)
