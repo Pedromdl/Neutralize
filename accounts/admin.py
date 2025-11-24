@@ -4,7 +4,7 @@ from django.db import models
 from django import forms
 from django.utils.html import format_html
 
-from .models import CustomUser, Clinica, Plano, Assinatura
+from .models import CustomUser, Clinica
 
 @admin.register(Clinica)
 class ClinicaAdmin(admin.ModelAdmin):
@@ -70,12 +70,3 @@ class CustomUserAdmin(UserAdmin):
     )
 
 admin.site.register(CustomUser, CustomUserAdmin)
-@admin.register(Plano)
-class PlanoAdmin(admin.ModelAdmin):
-    list_display = ['nome', 'tipo', 'preco_mensal', 'max_pacientes', 'ativo']
-    list_filter = ['tipo', 'ativo']
-
-@admin.register(Assinatura)  
-class AssinaturaAdmin(admin.ModelAdmin):
-    list_display = ['clinica', 'plano', 'status', 'data_inicio']
-    list_filter = ['status', 'plano']

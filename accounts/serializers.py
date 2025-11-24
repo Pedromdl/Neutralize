@@ -1,7 +1,7 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import DocumentoLegal, AceiteDocumento, Clinica, Plano, Assinatura
+from .models import DocumentoLegal, AceiteDocumento, Clinica
 
 User = get_user_model()
 
@@ -32,19 +32,3 @@ class AceiteDocumentoSerializer(serializers.ModelSerializer):
         model = AceiteDocumento
         fields = ['id', 'usuario', 'documento', 'data_aceite']
         read_only_fields = ['usuario', 'data_aceite']  # serão preenchidos automaticamente
-
-# accounts/serializers.py - ADICIONE
-
-class PlanoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Plano
-        fields = '__all__'
-
-class AssinaturaSerializer(serializers.ModelSerializer):
-    plano_nome = serializers.CharField(source='plano.nome', read_only=True)
-    em_trial = serializers.BooleanField(read_only=True)
-    atingiu_limite_pacientes = serializers.BooleanField(read_only=True)
-    
-    class Meta:
-        model = Assinatura
-        fields = '__all__'

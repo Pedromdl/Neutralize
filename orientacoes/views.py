@@ -172,9 +172,7 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
         return response
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        queryset = queryset.select_related(
+        return TreinoExecutado.objects.select_related(
             'paciente',
             'paciente__user',
             'treino'
@@ -182,7 +180,7 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
             Prefetch(
                 'exercicios',
                 queryset=ExercicioExecutado.objects.select_related(
-                    'exercicio__orientacao'  # 🔹 CAMINHO CORRETO
+                    'exercicio__orientacao'
                 ).prefetch_related('series')
             )
         ).annotate(
@@ -193,9 +191,7 @@ class TreinoExecutadoViewSet(viewsets.ModelViewSet):
                 output_field=CharField()
             ),
             treino_nome=F('treino__nome')
-        )
-
-        return queryset.order_by('-data', '-id')
+        ).order_by('-data', '-id')
     
     def create(self, request, *args, **kwargs):
         try:

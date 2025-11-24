@@ -1,6 +1,7 @@
 import requests
 from django.utils import timezone
 from django.conf import settings
+from accounts.models import CustomUser, Clinica
 from pagamentos.models import Assinatura, PlanoPagamento, ProvedorPagamento, TransacaoPagamento, WebhookLog
 
 
@@ -57,113 +58,93 @@ class AsaasService:
     # ================================================
     # 🔹 CLIENTE ASAAS
     # ================================================
-    def criar_cliente(self, assinatura: Assinatura):
-        clinica = assinatura.clinica
 
-        payload = {
-            "name": clinica.nome,
-            "email": clinica.email or clinica.email_contato,
-            "phone": clinica.telefone or clinica.whatsapp,
-            "cpfCnpj": clinica.cnpj or clinica.cpf,
-        }
-
-        data = self._post("/customers", payload)
-        assinatura.id_cliente_externo = data["id"]
-        assinatura.save()
-        return data
-
-    # ================================================
-    # 🔹 ASSINATURA RECORRENTE ASAAS
-    # ================================================
-    def criar_assinatura(self, assinatura: Assinatura):
-        if not assinatura.id_cliente_externo:
-            raise Exception("Cliente ASAAS não criado.")
-
-        payload = {
-            "customer": assinatura.id_cliente_externo,
-            "billingType": "UNDEFINED",
-            "value": float(assinatura.plano.preco_mensal),
-            "cycle": "MONTHLY",
-            "description": f"Assinatura {assinatura.plano.nome}",
-            "nextDueDate": timezone.now().date().isoformat(),
-        }
-
-        data = self._post("/subscriptions", payload)
-
-        assinatura.id_assinatura_externo = data["id"]
-        assinatura.save()
-
-        return data
-
-    # ================================================
-    # 🔹 REGISTRO DO PAGAMENTO (CARTÃO)
-    # ================================================
-    def ativar_assinatura_com_cartao(self, assinatura: Assinatura):
+    def criar_cliente(self, clinica: Clinica):
         """
-        Só funciona se a clínica já mandou o creditCardToken.
+        Cria um cliente no ASAAS representando a CLÍNICA.
+        A assinatura não deve mais ser responsável por criar clientes.
         """
 
-        if not assinatura.cartao_token:
-            raise Exception("Cartão não registrado.")
-
-        payload = {
-            "customer": assinatura.id_cliente_externo,
-            "billingType": "CREDIT_CARD",
-            "creditCardToken": assinatura.cartao_token,
-        }
-
-        data = self._post(f"/subscriptions/{assinatura.id_assinatura_externo}/updateCreditCard", payload)
-
-        return data
-
-    # ================================================
-    # 🔹 CANCELAR ASSINATURA
-    # ================================================
-    def cancelar_assinatura(self, assinatura: Assinatura):
-        data = self._delete(f"/subscriptions/{assinatura.id_assinatura_externo}")
-        assinatura.status = "cancelada"
-        assinatura.data_cancelamento = timezone.now()
-        assinatura.save()
-        return data
-
-    # ================================================
-    # 🔹 TRANSAÇÕES RECEBIDAS PELO WEBHOOK
-    # ================================================
-    def registrar_transacao(self, assinatura: Assinatura, payload: dict):
-        pagamento = payload["payment"]
-
-        trans, _ = TransacaoPagamento.objects.get_or_create(
-            id_transacao_externo=pagamento["id"],
-            assinatura=assinatura,
-            defaults={
-                "valor": pagamento["value"],
-                "data_vencimento": pagamento["dueDate"],
-                "methodo_pagamento": pagamento["billingType"].lower(),
-                "dados_transacao": pagamento,
+        # Já existe cliente ASAAS? Evitar duplicação.
+        if clinica.asaas_customer_id:
+            return {
+                "status": "already_exists",
+                "customer_id": clinica.asaas_customer_id
             }
+
+        # 🔎 Buscar administrador da clínica (usado para PF)
+        usuario_admin = CustomUser.objects.filter(
+            clinica=clinica,
+            role="admin"
+        ).first()
+
+        if not usuario_admin:
+            raise Exception("Nenhum usuário administrador encontrado para esta clínica.")
+
+        # ==========================================================
+        # 🔹 SE O CLIENTE É PJ → usar CNPJ
+        # ==========================================================
+        if clinica.cnpj:
+            payload = {
+                "name": clinica.nome,
+                "cpfCnpj": clinica.cnpj,
+                "email": usuario_admin.email,       # Email do responsável é válido
+                "phone": clinica.telefone or usuario_admin.telefone,
+            }
+
+        # ==========================================================
+        # 🔹 SE O CLIENTE É PF → usar dados do admin
+        # ==========================================================
+        else:
+            payload = {
+                "name": usuario_admin.get_full_name(),
+                "cpfCnpj": usuario_admin.cpf,
+                "email": usuario_admin.email,
+                "phone": usuario_admin.telefone,
+            }
+
+        # ==========================================================
+        # 🔥 Envia criação ao ASAAS
+        # ==========================================================
+        data = self._post("/customers", payload)
+
+        # 🔗 Salvar no modelo Clinica
+        clinica.asaas_customer_id = data["id"]
+        clinica.save()
+
+        return data
+    
+    def criar_assinatura_com_cartao(self, customer_id, valor, due_date, card_data, holder_info, external_id):
+        payload = {
+            "customer": customer_id,
+            "billingType": "CREDIT_CARD",
+            "value": valor,
+            "nextDueDate": due_date,
+            "cycle": "MONTHLY",
+            "description": "Assinatura Neutralize - Mensal",
+            "externalReference": external_id,
+                "creditCard": {
+                "holderName": card_data["holderName"],
+                "number": card_data["number"],
+                "expiryMonth": card_data["expiryMonth"],
+                "expiryYear": card_data["expiryYear"],
+                "ccv": card_data["ccv"],
+            },
+            "creditCardHolderInfo": {
+                "name": holder_info["name"],
+                "email": holder_info["email"],
+                "cpfCnpj": holder_info["cpfCnpj"],
+                "postalCode": holder_info["postalCode"],
+                "addressNumber": holder_info["addressNumber"],
+                "addressComplement": holder_info.get("addressComplement", ""),
+                "phone": holder_info["phone"],            },
+            "remoteIp": holder_info["remoteIp"],
+        }
+
+        r = requests.post(
+            f"{self.base_url}/subscriptions",
+            headers=self.headers,
+            json=payload
         )
 
-        return trans
-
-    def confirmar_pagamento(self, payload):
-        pagamento = payload["payment"]
-
-        try:
-            trans = TransacaoPagamento.objects.get(
-                id_transacao_externo=pagamento["id"]
-            )
-        except TransacaoPagamento.DoesNotExist:
-            return None
-
-        trans.status = "confirmed"
-        trans.data_pagamento = timezone.now()
-        trans.save()
-        return trans
-
-
-# =======================================================
-# 🔹 FUNÇÃO PRINCIPAL DE ENCAPSULAMENTO (facilidade)
-# =======================================================
-
-def get_asaas_service(assinatura: Assinatura):
-    return AsaasService(assinatura.provedor)
+        return r.json()
