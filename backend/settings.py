@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'financeiro.apps.FinanceiroConfig',
     'agenteIA',
     'integracoes',
+    'pagamentos',
 ]
 
 #ACCOUNT_USER_MODEL_USERNAME_FIELD = None
@@ -139,15 +140,18 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # <== aqui, antes do CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # 'allauth.account.middleware.AccountMiddleware',  # <== Adicione esta linha
+    # 'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
-
+    
+    # 🔥 SEUS NOVOS MIDDLEWARES - DEPOIS da autenticação
+    'accounts.middleware.TrialExpirationMiddleware',    # 1º - Expira trials
+    'accounts.middleware.TrialAccessMiddleware',        # 2º - Bloqueia acesso
 ]
 
 INTERNAL_IPS = [

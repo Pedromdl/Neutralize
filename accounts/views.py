@@ -1,6 +1,8 @@
 from django.conf import settings  # importe settings do Django
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from datetime import timedelta
+
 
 from rest_framework import generics, permissions, filters, viewsets
 from rest_framework.views import APIView
@@ -18,6 +20,7 @@ from api.mixins import ClinicFilterMixin
 from .serializers import CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
 from .models import Clinica, DocumentoLegal, CustomUser
 from api.models import Usuário
+from pagamentos.models import PlanoPagamento, Assinatura, ProvedorPagamento
 
 User = get_user_model()
 
@@ -223,10 +226,11 @@ class RegistrarAceiteDocumentoView(generics.CreateAPIView):
         def perform_create(self, serializer):
             serializer.save(usuario=self.request.user, data_aceite=timezone.now())
 
+            
 class RegisterAdminClinicaView(APIView):
     """
     Cria uma clínica e um CustomUser administrador.
-    Agora inclui first_name e last_name fornecidos pelo frontend.
+    Agora sem uso do AssinaturaService.
     """
 
     def post(self, request):
@@ -275,8 +279,26 @@ class RegisterAdminClinicaView(APIView):
             password=password
         )
 
+        # ----------------------------
+        # 🔵 CRIA ASSINATURA LOCAL (trial)
+        # ----------------------------
+        try:
+            plano_starter = PlanoPagamento.objects.get(tipo='starter', ativo=True)
+            provedor = ProvedorPagamento.objects.filter(ativo=True, tipo='asaas').first()
+
+            Assinatura.objects.create(
+                clinica=clinica,
+                plano=plano_starter,
+                provedor=provedor,
+                data_fim_trial=timezone.now() + timedelta(days=plano_starter.dias_trial),
+                status='trial'
+            )
+
+        except Exception as e:
+            print(f"⚠ Erro ao criar assinatura inicial: {str(e)}")
+            # OBS: Mesmo com erro na assinatura, clínica e usuário devem continuar existindo
+
         # Retorna tokens JWT
-        from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
 
         return Response({

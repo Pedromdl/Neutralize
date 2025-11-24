@@ -79,7 +79,6 @@ class BancodeExercicioViewSet(viewsets.ModelViewSet):
     """
     queryset = BancodeExercicio.objects.all()
     serializer_class = BancodeExercicioSerializer
-    pagination_class = BancoExercicioPagination
 
 
     # 🔹 Adiciona Search + Ordering
