@@ -334,11 +334,11 @@ class SerieRealizadaViewSet(viewsets.ModelViewSet):
     queryset = SerieRealizada.objects.all().select_related("exercicio", "execucao")
     serializer_class = SerieRealizadaSerializer
 
-from api.mixins import ClinicFilterMixin
+from api.mixins import OrganizacaoFilterMixin
 from rest_framework.pagination import PageNumberPagination
 
 
-from api.mixins import ClinicFilterMixin
+from api.mixins import OrganizacaoFilterMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -350,7 +350,7 @@ class TreinoExecutadoPagination(PageNumberPagination):
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 
-class TreinoExecutadoAdminViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+class TreinoExecutadoAdminViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     """
     ViewSet administrativo OTIMIZADO - zero queries N+1
     """
@@ -358,7 +358,7 @@ class TreinoExecutadoAdminViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = TreinoExecutadoPagination
     queryset = TreinoExecutado.objects.all()
-    clinica_field = "paciente__clinica"
+    organizacao_field = "paciente__organizacao"
 
     def get_queryset(self):
         queryset = super().get_queryset()

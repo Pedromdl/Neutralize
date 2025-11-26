@@ -6,7 +6,7 @@ from django.db import models
 # Representa eventos como agendas, consultas
 
 class EventoAgenda(models.Model):
-    clinica = models.ForeignKey('accounts.Clinica', on_delete=models.CASCADE, null=True, blank=True, related_name='eventos_agenda')
+    organizacao = models.ForeignKey('accounts.Organizacao', on_delete=models.CASCADE, null=True, blank=True, related_name='eventos_agenda')
     paciente = models.ForeignKey('api.Usuário', on_delete=models.CASCADE, null=True, blank=True, related_name='eventos_paciente')
     tipo = models.CharField(max_length=50)
     

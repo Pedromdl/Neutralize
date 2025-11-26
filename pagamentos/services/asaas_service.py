@@ -1,7 +1,8 @@
+from datetime import timedelta
 import requests
 from django.utils import timezone
 from django.conf import settings
-from accounts.models import CustomUser, Clinica
+from accounts.models import CustomUser, Organizacao
 from pagamentos.models import Assinatura, PlanoPagamento, ProvedorPagamento, TransacaoPagamento, WebhookLog
 
 
@@ -59,60 +60,82 @@ class AsaasService:
     # 🔹 CLIENTE ASAAS
     # ================================================
 
-    def criar_cliente(self, clinica: Clinica):
+    def criar_cliente(self, organizacao: Organizacao):
         """
-        Cria um cliente no ASAAS representando a CLÍNICA.
-        A assinatura não deve mais ser responsável por criar clientes.
+        Cria um cliente no ASAAS representando a ORGANIZAÇÃO.
+        Agora 100% alinhado com o modelo Organizacao.
         """
 
-        # Já existe cliente ASAAS? Evitar duplicação.
-        if clinica.asaas_customer_id:
+        # Já tem cliente ASAAS? Não criar duplicado.
+        if organizacao.asaas_customer_id:
             return {
                 "status": "already_exists",
-                "customer_id": clinica.asaas_customer_id
+                "customer_id": organizacao.asaas_customer_id
             }
 
-        # 🔎 Buscar administrador da clínica (usado para PF)
+        # Pega o admin responsável
         usuario_admin = CustomUser.objects.filter(
-            clinica=clinica,
-            role="admin"
+            organizacao=organizacao, role="admin"
         ).first()
 
         if not usuario_admin:
             raise Exception("Nenhum usuário administrador encontrado para esta clínica.")
 
-        # ==========================================================
-        # 🔹 SE O CLIENTE É PJ → usar CNPJ
-        # ==========================================================
-        if clinica.cnpj:
+        # ======================================================
+        # 🔹 Pessoa Jurídica (CNPJ)
+        # ======================================================
+        if organizacao.tipo_pessoa == "pj":
             payload = {
-                "name": clinica.nome,
-                "cpfCnpj": clinica.cnpj,
-                "email": usuario_admin.email,       # Email do responsável é válido
-                "phone": clinica.telefone or usuario_admin.telefone,
-            }
-
-        # ==========================================================
-        # 🔹 SE O CLIENTE É PF → usar dados do admin
-        # ==========================================================
-        else:
-            payload = {
-                "name": usuario_admin.get_full_name(),
-                "cpfCnpj": usuario_admin.cpf,
+                "name": organizacao.nome,
+                "cpfCnpj": organizacao.cnpj,
                 "email": usuario_admin.email,
-                "phone": usuario_admin.telefone,
             }
 
-        # ==========================================================
-        # 🔥 Envia criação ao ASAAS
-        # ==========================================================
+        # ======================================================
+        # 🔹 Pessoa Física (CPF)
+        # ======================================================
+        else:
+            cpf = organizacao.cpf or None
+            if not cpf:
+                raise Exception("Nenhum CPF disponível para criação de cliente PF.")
+
+            payload = {
+                "name": organizacao.nome,
+                "cpfCnpj": cpf,
+                "email": usuario_admin.email,
+            }
+
+        # Envia para o ASAAS
         data = self._post("/customers", payload)
 
-        # 🔗 Salvar no modelo Clinica
-        clinica.asaas_customer_id = data["id"]
-        clinica.save()
+        # Salva o ID retornado
+        organizacao.asaas_customer_id = data["id"]
+        organizacao.save()
 
         return data
+    
+    def criar_assinatura_trial(organizacao):
+        """
+        Cria uma assinatura local em período de trial para a organização recém-criada.
+        """
+
+        # Escolhe qual plano será o trial (pode alterar aqui depois)
+        plano_trial = PlanoPagamento.objects.get(tipo="professional")
+
+        provedor = ProvedorPagamento.objects.get(tipo="asaas")
+
+        assinatura = Assinatura.objects.create(
+            organizacao=organizacao,
+            plano=plano_trial,
+            provedor=provedor,
+            status="trial",
+            data_inicio=timezone.now(),
+            data_fim_trial=timezone.now() + timedelta(days=plano_trial.dias_trial),
+            metodo_pagamento=None,  # Sem pagamento ainda
+        )
+
+        return assinatura
+
     
     def criar_assinatura_com_cartao(self, customer_id, valor, due_date, card_data, holder_info, external_id):
         payload = {

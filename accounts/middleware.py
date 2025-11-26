@@ -13,13 +13,13 @@ class TrialExpirationMiddleware:
         print(f"🎯 DEBUG MIDDLEWARE - User: {request.user}, Auth: {request.user.is_authenticated}")
         print(f"🎯 DEBUG MIDDLEWARE - Path: {request.path}")
         # Só verifica se usuário está autenticado e tem clínica
-        if request.user.is_authenticated and hasattr(request.user, 'clinica'):
+        if request.user.is_authenticated and hasattr(request.user, 'organizacao'):
             try:
-                assinatura = getattr(request.user.clinica, 'assinatura_pagamento', None)
+                assinatura = getattr(request.user.organizacao, 'assinatura_pagamento', None)
                 if assinatura and assinatura.status == 'trial' and not assinatura.em_trial:
                     # 🔥 EXPIRA O TRIAL AUTOMATICAMENTE
                     assinatura.expirar_trial()
-                    print(f"✅ Trial expirado para: {request.user.clinica.nome}")
+                    print(f"✅ Trial expirado para: {request.user.organizacao.nome}")
             except Exception as e:
                 print(f"❌ Erro ao verificar trial: {e}")
                 
@@ -48,15 +48,15 @@ class TrialAccessMiddleware:
         
         # Verifica se precisa bloquear
         if (request.user.is_authenticated and 
-            hasattr(request.user, 'clinica')):
+            hasattr(request.user, 'organizacao')):
             
-            print(f"🔍 Usuário tem clínica: {request.user.clinica.nome}")
+            print(f"🔍 Usuário tem clínica: {request.user.organizacao.nome}")
             
             if not any(request.path.startswith(url) for url in URLs_PERMITIDAS):
                 print(f"🔍 URL NÃO está na lista permitida: {request.path}")
                 
                 try:
-                    assinatura = getattr(request.user.clinica, 'assinatura_pagamento', None)
+                    assinatura = getattr(request.user.organizacao, 'assinatura_pagamento', None)
                     print(f"🔍 Assinatura encontrada: {assinatura}")
                     
                     if assinatura:

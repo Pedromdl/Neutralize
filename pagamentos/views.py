@@ -11,7 +11,7 @@ from django.utils import timezone
 import json
 import uuid
 
-from accounts.models import Clinica
+from accounts.models import Organizacao
 from pagamentos.services.asaas_service import AsaasService
 
 from .models import ProvedorPagamento, PlanoPagamento, Assinatura, TransacaoPagamento, WebhookLog
@@ -46,34 +46,34 @@ def listar_planos(request):
 
 class CriarAssinaturaClinicaView(APIView):
     """
-    Cria a assinatura da clínica e salva o creditCardToken no banco
+    Cria a assinatura da organização e salva o creditCardToken no banco
     """
 
     def post(self, request):
-        clinica_id = request.data.get("clinica_id")
+        organizacao_id = request.data.get("organizacao_id")
         card_data = request.data.get("card")
         holder_info = request.data.get("holder")
         valor = request.data.get("valor")
         due_date = request.data.get("due_date")
 
         try:
-            clinica = Clinica.objects.get(id=clinica_id)
-        except Clinica.DoesNotExist:
-            return Response({"error": "Clínica não encontrada"}, status=404)
+            organizacao = Organizacao.objects.get(id=organizacao_id)
+        except Organizacao.DoesNotExist:
+            return Response({"error": "Organização não encontrada"}, status=404)
 
-        if not clinica.asaas_customer_id:
-            return Response({"error": "A Clínica não possui customer_id no ASAAS"}, status=400)
+        if not organizacao.asaas_customer_id:
+            return Response({"error": "A Organização não possui customer_id no ASAAS"}, status=400)
 
         provedor = ProvedorPagamento.objects.first()  # Ajuste conforme sua lógica para obter o provedor correto
         asaas = AsaasService(provedor)
 
         result = asaas.criar_assinatura_com_cartao(
-            customer_id=clinica.asaas_customer_id,
+            customer_id=organizacao.asaas_customer_id,
             valor=valor,
             due_date=due_date,
             card_data=card_data,
             holder_info=holder_info,
-            external_id=f"clinica_{clinica.id}_assinatura"
+            external_id=f"organizacao_{organizacao.id}_assinatura"
         )
 
         # Se o ASAAS responder com erro
@@ -84,8 +84,8 @@ class CriarAssinaturaClinicaView(APIView):
         token = result.get("creditCard", {}).get("creditCardToken")
 
         if token:
-            clinica.credit_card_token = token
-            clinica.save()
+            organizacao.credit_card_token = token
+            organizacao.save()
 
         return Response({
             "assinatura": result,
@@ -98,12 +98,12 @@ def detalhes_assinatura(request, assinatura_id=None):
     """API: Detalhes da assinatura (para React)"""
     try:
         if assinatura_id:
-            assinatura = get_object_or_404(Assinatura, id=assinatura_id, clinica=request.user.clinica)
+            assinatura = get_object_or_404(Assinatura, id=assinatura_id, organizacao=request.user.organizacao)
         else:
             try:
-                assinatura = Assinatura.objects.get(clinica=request.user.clinica)
+                assinatura = Assinatura.objects.get(organizacao=request.user.organizacao)
             except Assinatura.DoesNotExist:
-                return Response({'assinatura': None, 'message': 'Nenhuma assinatura encontrada para esta clínica'})
+                return Response({'assinatura': None, 'message': 'Nenhuma assinatura encontrada para esta organização'})
 
         transacoes = assinatura.transacoes.all().order_by('-data_criacao')
 
@@ -153,7 +153,7 @@ def detalhes_assinatura(request, assinatura_id=None):
 def cancelar_assinatura(request, assinatura_id):
     """API: Cancela uma assinatura (localmente)."""
     try:
-        assinatura = get_object_or_404(Assinatura, id=assinatura_id, clinica=request.user.clinica)
+        assinatura = get_object_or_404(Assinatura, id=assinatura_id, organizacao=request.user.organizacao)
 
         # Marcar cancelamento localmente
         assinatura.status = 'cancelada'

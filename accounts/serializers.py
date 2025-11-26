@@ -1,14 +1,9 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import DocumentoLegal, AceiteDocumento, Clinica
+from .models import DocumentoLegal, AceiteDocumento
 
 User = get_user_model()
-
-class ClinicaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Clinica
-        fields = "__all__"
 
 class CustomUserCreateSerializer(UserCreateSerializer):
     class Meta(UserCreateSerializer.Meta):

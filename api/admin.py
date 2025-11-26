@@ -6,7 +6,7 @@ from .models import (Usuário, ForcaMuscular, Mobilidade, Estabilidade, Categori
 
 @admin.register(Usuário)
 class UsuárioAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nome', 'data_de_nascimento', 'clinica')
+    list_display = ('id', 'nome', 'data_de_nascimento', 'organizacao')
 
 @admin.register(Mobilidade)
 class MobilidadeAdmin(admin.ModelAdmin):

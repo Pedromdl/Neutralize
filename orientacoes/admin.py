@@ -65,8 +65,8 @@ class TreinoAdmin(admin.ModelAdmin):
 @admin.register(TreinoExecutado)
 class TreinoExecutadoAdmin(admin.ModelAdmin):
     list_display = ('id', 'treino', 'paciente', 'data', 'finalizado', 'tempo_total')
-    list_filter = ('finalizado', 'data', 'paciente__clinica__nome')
-    search_fields = ('paciente__clinica__nome',)
+    list_filter = ('finalizado', 'data', 'paciente__organizacao__nome')
+    search_fields = ('paciente__organizacao__nome',)
     inlines = [ExercicioExecutadoInline]
 
     def get_queryset(self, request):

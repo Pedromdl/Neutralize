@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField, EncryptedTextField
-from accounts.models import CustomUser, Clinica
+from accounts.models import CustomUser, Organizacao
 
 import secrets
 
@@ -38,8 +38,7 @@ class Usuário(models.Model):
         blank=True,
         related_name="usuario"
     )
-    
-    clinica = models.ForeignKey(Clinica, on_delete=models.CASCADE, null=True, blank=True)
+    organizacao = models.ForeignKey(Organizacao, on_delete=models.CASCADE, null=True, blank=True)
 
 
     def __str__(self):
@@ -156,7 +155,7 @@ class TesteDor(models.Model):
 class PreAvaliacao(models.Model):
     titulo = models.CharField(max_length=200)
     texto = models.TextField()
-    clinica = models.ForeignKey(Clinica, on_delete=models.CASCADE, null=True, blank=True)
+    organizacao = models.ForeignKey(Organizacao, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         verbose_name = "Pré-Avaliação"

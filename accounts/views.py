@@ -15,20 +15,21 @@ from rest_framework.exceptions import PermissionDenied
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-from api.mixins import ClinicFilterMixin
+from api.mixins import OrganizacaoFilterMixin
 
 from .serializers import CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
-from .models import Clinica, DocumentoLegal, CustomUser
+from .models import Organizacao, DocumentoLegal, CustomUser
 from api.models import Usuário
 from pagamentos.models import PlanoPagamento, Assinatura, ProvedorPagamento
+from pagamentos.services.asaas_service import AsaasService
 
 User = get_user_model()
 
-class CustomUserViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+class CustomUserViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     """
     CRUD completo de CustomUser:
-    - create: cria usuário na clínica do admin logado
-    - list: lista apenas usuários da clínica
+    - create: cria usuário na organização do admin logado
+    - list: lista apenas usuários da organização
     - retrieve: obtém um usuário específico
     - update/partial_update: editar usuário
     - destroy: deletar usuário
@@ -37,40 +38,40 @@ class CustomUserViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = CustomUser.objects.all()
-    clinica_field = "clinica"  # ESSENCIAL para o filtro automático
+    organizacao_field = "organizacao"   # <-- ESSENCIAL
 
     # ----------------------------------------------------------------------
 
     def perform_create(self, serializer):
         """
-        Garante que o usuário criado pertence à mesma clínica do usuário logado.
-        Ignora clinica enviada pelo frontend.
+        Garante que o usuário criado pertence à mesma organização do usuário logado.
+        Ignora organização enviada pelo frontend.
         """
         user = self.request.user
 
-        serializer.save(clinica=user.clinica)
+        serializer.save(organizacao=user.organizacao)
 
     # ----------------------------------------------------------------------
 
     def perform_destroy(self, instance):
         """
-        Impede que alguém delete usuários de outra clínica (segurança extra).
+        Impede que alguém delete usuários de outra organização (segurança extra).
         """
-        if instance.clinica != self.request.user.clinica:
-            raise PermissionDenied("Você não pode deletar usuários de outra clínica.")
+        if instance.organizacao != self.request.user.organizacao:
+            raise PermissionDenied("Você não pode deletar usuários de outra organização.")
         instance.delete()
 
     # ----------------------------------------------------------------------
 
     def perform_update(self, serializer):
         """
-        Garante que a edição não troque o usuário de clínica.
+        Garante que a edição não troque o usuário de organização.
         """
         user = self.request.user
-        if serializer.instance.clinica != user.clinica:
-            raise PermissionDenied("Você não pode editar usuários de outra clínica.")
+        if serializer.instance.organizacao != user.organizacao:
+            raise PermissionDenied("Você não pode editar usuários de outra organização.")
 
-        serializer.save(clinica=user.clinica)  # força permanência
+        serializer.save(organizacao=user.organizacao)  # força permanência
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = CustomUserSerializer
@@ -80,11 +81,11 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         print("Usuário autenticado na requisição:", self.request.user)
         return self.request.user
     
-class UserListView(ClinicFilterMixin, generics.ListAPIView):
+class UserListView(OrganizacaoFilterMixin, generics.ListAPIView):
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = CustomUser.objects.all()
-    clinica_field = "clinica"   # <-- ESSENCIAL
+    organizacao_field = "organizacao"   # <-- ESSENCIAL
     filter_backends = [filters.OrderingFilter]  # <— habilita ordenação
     ordering_fields = ['id', 'first_name', 'email', 'role']   # <— campos liberados
     ordering = ['id']  # ordenação padrão
@@ -141,7 +142,7 @@ class GoogleAuthView(APIView):
                         first_name=first_name or paciente.nome.split()[0],
                         last_name=last_name or " ".join(paciente.nome.split()[1:]),
                         role="paciente",
-                        clinica=paciente.clinica,
+                        organizacao=paciente.organizacao,
                         photo_google=photo
                     )
                     # Associa o CustomUser ao Usuário
@@ -229,19 +230,19 @@ class RegistrarAceiteDocumentoView(generics.CreateAPIView):
             
 class RegisterAdminClinicaView(APIView):
     """
-    Cria uma clínica e um CustomUser administrador.
+    Cria uma organização e um CustomUser administrador.
     Agora sem uso do AssinaturaService.
     """
 
     def post(self, request):
         email = request.data.get("email", "").strip()
-        nome_clinica = request.data.get("nome", "").strip()
+        nome_organizacao = request.data.get("nome", "").strip()
         password = request.data.get("password", "").strip()
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
 
         # Validação dos campos obrigatórios
-        if not all([email, nome_clinica, password, first_name, last_name]):
+        if not all([email, nome_organizacao, password, first_name, last_name]):
             return Response({"error": "Todos os campos são obrigatórios."}, status=400)
 
         # Valida email
@@ -262,11 +263,43 @@ class RegisterAdminClinicaView(APIView):
         if CustomUser.objects.filter(email__iexact=email).exists():
             return Response({"error": "Email já cadastrado."}, status=400)
 
-        # Cria clínica
+        # ==========================================================
+        # 🔹 Detecta tipo de pessoa (CPF ou CNPJ)
+        # ==========================================================
+        documento = request.data.get("documento", "").strip()
+        documento_limpo = "".join(filter(str.isdigit, documento))  # remove pontos, traços, barras
+
+        if len(documento_limpo) == 11:
+            tipo_pessoa = "pf"
+            cpf = documento_limpo
+            cnpj = None
+
+        elif len(documento_limpo) == 14:
+            tipo_pessoa = "pj"
+            cpf = None
+            cnpj = documento_limpo
+
+        else:
+            return Response(
+                {"error": "Documento inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos)."},
+                status=400
+            )
+
+        # ==========================================================
+        # 🔹 Cria organização com tipo_pessoa + CPF/CNPJ
+        # ==========================================================
         try:
-            clinica = Clinica.objects.create(nome=nome_clinica)
+            organizacao = Organizacao.objects.create(
+                nome=nome_organizacao,
+                tipo_pessoa=tipo_pessoa,
+                cpf=cpf,
+                cnpj=cnpj
+            )
         except IntegrityError:
-            return Response({"error": "Já existe uma clínica com esse nome."}, status=400)
+            return Response(
+                {"error": "Já existe uma organização com esse nome."},
+                status=400
+            )
 
         # Cria usuário admin
         user = CustomUser.objects.create_user(
@@ -274,35 +307,26 @@ class RegisterAdminClinicaView(APIView):
             first_name=first_name,
             last_name=last_name,
             role="admin",
-            clinica=clinica,
+            organizacao=organizacao,
             is_staff=True,
             password=password
         )
-
-        # ----------------------------
-        # 🔵 CRIA ASSINATURA LOCAL (trial)
-        # ----------------------------
+        # ==========================================================
+        # 🔹 INTEGRAÇÃO ASAAS: Criar cliente
+        # ==========================================================
         try:
-            plano_starter = PlanoPagamento.objects.get(tipo='starter', ativo=True)
-            provedor = ProvedorPagamento.objects.filter(ativo=True, tipo='asaas').first()
-
-            Assinatura.objects.create(
-                clinica=clinica,
-                plano=plano_starter,
-                provedor=provedor,
-                data_fim_trial=timezone.now() + timedelta(days=plano_starter.dias_trial),
-                status='trial'
-            )
-
+            provedor = ProvedorPagamento.objects.get(tipo="asaas")
+            asaas = AsaasService(provedor)
+            asaas.criar_cliente(organizacao)   # <-- AQUI CRIA O CLIENTE NO ASAAS
         except Exception as e:
-            print(f"⚠ Erro ao criar assinatura inicial: {str(e)}")
-            # OBS: Mesmo com erro na assinatura, clínica e usuário devem continuar existindo
+            return Response({
+                "error": "Organização criada, mas falha ao registrar cliente no ASAAS.",
+                "detalhes": str(e)
+            }, status=500)
 
-        # Retorna tokens JWT
-        refresh = RefreshToken.for_user(user)
-
+        # Respondendo ao cliente final
         return Response({
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "message": "Clínica e administrador criados com sucesso."
+            "status": "success",
+            "organizacao_id": organizacao.id,
+            "user_id": user.id
         }, status=201)

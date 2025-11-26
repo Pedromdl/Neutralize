@@ -48,14 +48,14 @@ from .serializers import (
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, 
     PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer
 )
-from .mixins import ClinicFilterMixin
+from .mixins import OrganizacaoFilterMixin
 
 
-class UsuárioViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+class UsuárioViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     queryset = Usuário.objects.all()
     serializer_class = UsuárioSerializer
     permission_classes = [IsAuthenticated]
-    clinica_field = "clinica"
+    organizacao_field = "organizacao"
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -444,11 +444,11 @@ class DatasDisponiveisAPIView(APIView):
         except Exception as e:
             return Response({'erro': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class PreAvaliacaoViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+class PreAvaliacaoViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = PreAvaliacao.objects.all()
     serializer_class = PreAvaliacaoSerializer
-    clinica_field = "clinica"
+    organizacao_field = "organizacao"
 
 class AnamneseViewSet(viewsets.ModelViewSet):
     queryset = Anamnese.objects.all()

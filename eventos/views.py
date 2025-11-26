@@ -9,15 +9,15 @@ from rest_framework import status
 from rest_framework import viewsets
 import calendar
 from datetime import datetime
-from api.mixins import ClinicFilterMixin
+from api.mixins import OrganizacaoFilterMixin
 
 # Create your views here.
-class EventoAgendaViewSet(ClinicFilterMixin, viewsets.ModelViewSet):
+class EventoAgendaViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     queryset = EventoAgenda.objects.all()
     serializer_class = EventoAgendaSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['paciente']  # permite filtro por paciente
-    clinica_field = "clinica"
+    organizacao_field = "organizacao"   # <-- ESSENCIAL
 
 
     # 🔹 Adicione este método logo aqui:

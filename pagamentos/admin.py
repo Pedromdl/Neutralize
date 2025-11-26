@@ -13,15 +13,15 @@ class PlanoPagamentoAdmin(admin.ModelAdmin):
 
 @admin.register(Assinatura)
 class AssinaturaAdmin(admin.ModelAdmin):
-    list_display = ['clinica', 'plano', 'status', 'data_inicio', 'data_proximo_pagamento']
+    list_display = ['organizacao', 'plano', 'status', 'data_inicio', 'data_proximo_pagamento']
     list_filter = ['status', 'plano', 'metodo_pagamento']
-    search_fields = ['clinica__nome']
+    search_fields = ['organizacao__nome']
 
 @admin.register(TransacaoPagamento)
 class TransacaoPagamentoAdmin(admin.ModelAdmin):
     list_display = ['id_transacao_externo', 'assinatura', 'valor', 'status', 'data_vencimento']
     list_filter = ['status', 'metodo_pagamento']
-    search_fields = ['id_transacao_externo', 'assinatura__clinica__nome']
+    search_fields = ['id_transacao_externo', 'assinatura__organizacao__nome']
 
 @admin.register(WebhookLog)
 class WebhookLogAdmin(admin.ModelAdmin):

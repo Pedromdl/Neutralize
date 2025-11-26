@@ -1,16 +1,40 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 
-class Clinica(models.Model):
+class Organizacao(models.Model):
+    TIPO_PESSOA = [
+        ('pf', 'Pessoa Física'),
+        ('pj', 'Pessoa Jurídica'),
+    ]
+
+    TIPO_ORGANIZACAO = [
+        ('clinica', 'Clínica'),
+        ('consultorio', 'Consultório'),
+        ('estudio', 'Estúdio'),
+        ('autonomo', 'Profissional Autônomo'),
+        ('online', 'Serviço Online'),
+        ('instituto', 'Empresa/Instituto'),
+        ('outro', 'Outro'),
+    ]
+
     nome = models.CharField(max_length=255)
+    
+    tipo_pessoa = models.CharField(max_length=2, choices=TIPO_PESSOA, default='pf')
+    tipo = models.CharField(max_length=20, choices=TIPO_ORGANIZACAO, default='autonomo')
+
+    cnpj = models.CharField(max_length=20, blank=True, null=True)
+    cpf = models.CharField(max_length=14, blank=True, null=True)
+
     asaas_customer_id = models.CharField(max_length=50, blank=True, null=True)
-    credit_card_token = models.CharField(max_length=255, blank=True, null=True)  # ← AQUI
-    cnpj = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    logo = models.ImageField(upload_to="clinicas/logos/", null=True, blank=True)
+    credit_card_token = models.CharField(max_length=255, blank=True, null=True)
+
+    logo = models.ImageField(upload_to="organizacoes/logos/", blank=True, null=True)
+
     endereco = models.CharField(max_length=255, blank=True)
-    numero = models.CharField(max_length=255, blank=True)
+    numero = models.CharField(max_length=20, blank=True)
     complemento = models.CharField(max_length=255, blank=True)
     telefone = models.CharField(max_length=20, blank=True)
+
     data_criacao = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -37,7 +61,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('profissional', 'Profissional'),
         ('paciente', 'Paciente'),
     ]
-    clinica = models.ForeignKey('Clinica', on_delete=models.CASCADE, null=True, blank=True, related_name='usuarios')
+    organizacao = models.ForeignKey('Organizacao', on_delete=models.CASCADE, null=True, blank=True, related_name='UsuarioOrganizacao')
     photo_google = models.URLField(blank=True, null=True)
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50, blank=True)

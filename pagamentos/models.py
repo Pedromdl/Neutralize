@@ -84,10 +84,12 @@ class Assinatura(models.Model):
         ('pix', 'PIX')
     ]
     
-    clinica = models.OneToOneField(
-        'accounts.Clinica',  # ← CORREÇÃO AQUI
+    organizacao = models.OneToOneField(
+        'accounts.Organizacao',  # ← CORREÇÃO AQUI
         on_delete=models.CASCADE, 
-        related_name='assinatura_pagamento'
+        related_name='assinatura_pagamento',
+        null=True,
+        blank= True,
     )
     plano = models.ForeignKey('PlanoPagamento', on_delete=models.PROTECT)
     provedor = models.ForeignKey('ProvedorPagamento', on_delete=models.PROTECT)
@@ -124,7 +126,7 @@ class Assinatura(models.Model):
         verbose_name_plural = "Assinaturas"
     
     def __str__(self):
-        return f"{self.clinica.nome} - {self.plano.nome}"
+        return f"{self.organizacao.nome} - {self.plano.nome}"
     
     @property
     def em_trial(self):
