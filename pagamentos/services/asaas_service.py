@@ -114,14 +114,13 @@ class AsaasService:
 
         return data
     
-    def criar_assinatura_trial(organizacao):
+    def criar_assinatura_trial(self, organizacao):
         """
         Cria uma assinatura local em período de trial para a organização recém-criada.
         """
 
         # Escolhe qual plano será o trial (pode alterar aqui depois)
-        plano_trial = PlanoPagamento.objects.get(tipo="professional")
-
+        plano_trial = PlanoPagamento.objects.get(tipo="starter")
         provedor = ProvedorPagamento.objects.get(tipo="asaas")
 
         assinatura = Assinatura.objects.create(

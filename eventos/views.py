@@ -52,42 +52,50 @@ class EventoAgendaViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
         return queryset
     
     def create(self, request, *args, **kwargs):
-        dados = request.data.copy()  # cria cópia mutável
-        dados.pop('id', None)  # Remover 'id' se presente
+        dados = request.data.copy()
+        dados.pop('id', None)
+
         repetir = dados.get("repetir", False)
         frequencia = dados.get("frequencia", "nenhuma")
         repeticoes = int(dados.get("repeticoes") or 0)
 
+        organizacao = request.user.organizacao  # <-- PEGAR ORGANIZAÇÃO DO USER
+
         # Evento principal
         serializer = self.get_serializer(data=dados)
         serializer.is_valid(raise_exception=True)
-        evento_principal = serializer.save()
+        evento_principal = serializer.save(organizacao=organizacao)  # <-- SALVA AQUI
 
         eventos_criados = [evento_principal]
 
         # Eventos repetidos
         if repetir and frequencia != "nenhuma" and repeticoes > 0:
             data_base = evento_principal.data
+
             for i in range(1, repeticoes):
                 nova_data = self.calcular_proxima_data(data_base, frequencia, i)
+
                 novo_evento = EventoAgenda.objects.create(
                     paciente=evento_principal.paciente,
                     tipo=evento_principal.tipo,
-                    status="pendente",  # Evita débito automático
+                    status="pendente",
                     data=nova_data,
                     hora_inicio=evento_principal.hora_inicio,
                     hora_fim=evento_principal.hora_fim,
                     responsavel=evento_principal.responsavel,
                     repetir=False,
                     frequencia="nenhuma",
-                    evento_pai=evento_principal
+                    evento_pai=evento_principal,
+                    organizacao=organizacao,   # <-- ADICIONAR AQUI
                 )
+
                 eventos_criados.append(novo_evento)
 
         return Response(
             EventoAgendaSerializer(eventos_criados, many=True).data,
             status=status.HTTP_201_CREATED
         )
+
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()

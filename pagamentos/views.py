@@ -98,13 +98,31 @@ def detalhes_assinatura(request, assinatura_id=None):
     """API: Detalhes da assinatura (para React)"""
     try:
         if assinatura_id:
-            assinatura = get_object_or_404(Assinatura, id=assinatura_id, organizacao=request.user.organizacao)
+            assinatura = get_object_or_404(
+                Assinatura,
+                id=assinatura_id,
+                organizacao=request.user.organizacao
+            )
         else:
             try:
-                assinatura = Assinatura.objects.get(organizacao=request.user.organizacao)
+                assinatura = Assinatura.objects.get(
+                    organizacao=request.user.organizacao
+                )
             except Assinatura.DoesNotExist:
-                return Response({'assinatura': None, 'message': 'Nenhuma assinatura encontrada para esta organização'})
+                return Response({
+                    'assinatura': None,
+                    'message': 'Nenhuma assinatura encontrada para esta organização'
+                })
 
+        hoje = timezone.now().date()
+
+        if assinatura.data_fim_trial and assinatura.data_fim_trial.date() < hoje:
+            # Trial expirou
+            if assinatura.status == "trial":
+                assinatura.status = "aguardando_pagamento"
+                assinatura.save()
+
+        # Carregar transações normalmente
         transacoes = assinatura.transacoes.all().order_by('-data_criacao')
 
         transacoes_data = []
@@ -146,6 +164,7 @@ def detalhes_assinatura(request, assinatura_id=None):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['POST'])
