@@ -117,9 +117,13 @@ class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
 # =========================
 # Treinos Interativos
 # =========================
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+
 class TreinoViewSet(viewsets.ModelViewSet):
     queryset = Treino.objects.all()
-    serializer_class = TreinoSerializer  # serializer completo
+    serializer_class = TreinoSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -130,28 +134,56 @@ class TreinoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def por_secao(self, request):
-        """
-        Retorna apenas id, nome e secao dos treinos de uma seção,
-        sem os exercícios, para a página TreinoSecaoDetalhes.
-        """
         secao_id = request.query_params.get('secao')
         if not secao_id:
             return Response({"detail": "Parâmetro 'secao' é obrigatório."}, status=400)
-        
+
         treinos = Treino.objects.filter(secao_id=secao_id)
         serializer = TreinoListSerializer(treinos, many=True)
         return Response(serializer.data)
+
+    # 🔥🔥 NOVA ACTION: DUPLICAR TREINO 🔥🔥
+    @action(detail=True, methods=['post'])
+    def duplicar(self, request, pk=None):
+        treino_original = self.get_object()
+
+        # 1️⃣ Criar novo treino
+        novo_treino = Treino.objects.create(
+            secao=treino_original.secao,
+            nome=f"{treino_original.nome} (cópia)"
+        )
+
+        # 2️⃣ Duplicar exercícios associados
+        for ex in treino_original.exercicios.all():  # ⚠️ importante: usar related_name correto
+            ExercicioPrescrito.objects.create(
+                treino=novo_treino,
+                orientacao=ex.orientacao,
+                series_planejadas=ex.series_planejadas,
+                repeticoes_planejadas=ex.repeticoes_planejadas,
+                carga_planejada=ex.carga_planejada,
+                observacao=ex.observacao
+            )
+
+        # 3️⃣ Retorna treino já com exercícios
+        serializer = TreinoSerializer(novo_treino)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     
 class HistoricoTreinoList(generics.ListAPIView):
     serializer_class = HistoricoTreinoSerializer
 
     def get_queryset(self):
-        usuario = Usuário.objects.get(user=self.request.user)
+        try:
+            usuario = Usuário.objects.get(user=self.request.user)
+        except Usuário.DoesNotExist:
+            return TreinoExecutado.objects.none()   # ⬅ evita erro e retorna vazio
+
         return (
             TreinoExecutado.objects.filter(paciente=usuario)
-                .select_related("treino")    # ⬅️ evita N+1
-                .order_by("-data")
+            .select_related("treino")
+            .order_by("-data")
         )
+
 
 import time
 import logging
@@ -351,7 +383,7 @@ from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 
 class TreinoExecutadoAdminViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
-    """
+    """T
     ViewSet administrativo OTIMIZADO - zero queries N+1
     """
     serializer_class = TreinoExecutadoAdminSerializer

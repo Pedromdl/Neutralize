@@ -316,17 +316,27 @@ class RegisterAdminClinicaView(APIView):
         # ==========================================================
         try:
             provedor = ProvedorPagamento.objects.get(tipo="asaas")
+
+            # AsaasService correto (com os argumentos certos)
             asaas = AsaasService(provedor)
-            asaas.criar_cliente(organizacao)   # <-- AQUI CRIA O CLIENTE NO ASAAS
+
+            # Cria cliente no ASAAS
+            asaas.criar_cliente(organizacao)
+
+            # Cria assinatura trial local
+            asaas.criar_assinatura_trial(organizacao)
+
         except Exception as e:
             return Response({
                 "error": "Organização criada, mas falha ao registrar cliente no ASAAS.",
                 "detalhes": str(e)
             }, status=500)
 
-        # Respondendo ao cliente final
+        # ==========================================================
+        # 🔹 ESTE RETURN FINAL FALTAVA!
+        # ==========================================================
         return Response({
-            "status": "success",
+            "mensagem": "Organização e assinatura trial criadas com sucesso!",
             "organizacao_id": organizacao.id,
-            "user_id": user.id
+            "usuario_id": user.id
         }, status=201)

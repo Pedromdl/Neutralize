@@ -4,34 +4,16 @@ from django.db import models
 from django import forms
 from django.utils.html import format_html
 
-from .models import CustomUser, Organizacao
+from .models import CustomUser, Organizacao, DocumentoLegal
 
 
 @admin.register(Organizacao)
 class OrganizacaoAdmin(admin.ModelAdmin):
-    list_display = (
-        'id',
-        'nome',
-        'tipo_pessoa',
-        'tipo',
-        'cpf',
-        'cnpj',
-        'telefone',
-        'data_criacao',
-    )
+    list_display = ('id', 'nome', 'tipo_pessoa', 'tipo', 'cpf', 'cnpj', 'telefone', 'data_criacao')
 
-    list_filter = (
-        'tipo_pessoa',
-        'tipo',
-        'data_criacao',
-    )
+    list_filter = ('tipo_pessoa', 'tipo', 'data_criacao')
 
-    search_fields = (
-        'nome',
-        'cpf',
-        'cnpj',
-        'telefone',
-    )
+    search_fields = ('nome', 'cpf', 'cnpj', 'telefone')
 
     readonly_fields = ('data_criacao',)
 
@@ -60,20 +42,11 @@ class OrganizacaoAdmin(admin.ModelAdmin):
     )
 
 
-
+@admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
 
-    list_display = (
-        "id",
-        "email",
-        "first_name",
-        "last_name",
-        "organizacao_id_display",   # ✅ novo
-        "role",
-        "is_staff",
-        "is_active",
-    )
+    list_display = ("id", "email", "first_name", "last_name", "organizacao_id_display", "role", "is_staff", "is_active")
 
     list_filter = ("is_staff", "is_active", "organizacao")  # ✅ novo filtro
     search_fields = ("email", "first_name", "last_name")
@@ -93,32 +66,13 @@ class CustomUserAdmin(UserAdmin):
     # ----- FIELDSETS -----
     fieldsets = (
         (None, {
-            "fields": (
-                "email",
-                "password",
-                "role",
-                "organizacao",  # ✅ novo campo
-            )
+            "fields": ("email", "password", "role", "organizacao",)
         }),
         ("Informações Pessoais", {
-            "fields": (
-                "first_name",
-                "last_name",
-                "cpf",
-                "address",
-                "phone",
-                "birth_date",
-                "photo_google",
-            )
+            "fields": ( "first_name",  "last_name",  "cpf",  "address",  "phone",  "birth_date",  "photo_google", )
         }),
         ("Permissões", {
-            "fields": (
-                "is_staff",
-                "is_active",
-                "is_superuser",
-                "groups",
-                "user_permissions",
-            )
+            "fields": ( "is_staff", "is_active", "is_superuser", "groups", "user_permissions", )
         }),
         ("Datas Importantes", {"fields": ("last_login", "date_joined")}),
     )
@@ -129,18 +83,29 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             "classes": ("wide",),
-            "fields": (
-                "email",
-                "password1",
-                "password2",
-                "role",
-                "organizacao",  # ✅ novo campo
-                "is_staff",
-                "is_active",
+            "fields": (  "email",  "password1", "password2",  "role",  "organizacao",  "is_staff", "is_active",
             ),
         }),
     )
 
+@admin.register(DocumentoLegal)
+class DocumentoLegalAdmin(admin.ModelAdmin):
+    list_display = ('id', 'titulo', 'tipo', 'publico', 'versao', 'ativo', 'data_publicacao')
+    list_filter = ('tipo', 'publico', 'ativo')
+    search_fields = ('titulo', 'conteudo', 'versao')
+    readonly_fields = ('data_publicacao',)
 
-admin.site.register(CustomUser, CustomUserAdmin)
+    fieldsets = (
+        ("Informações Principais", {
+            "fields": ("titulo", "tipo", "publico", "versao")
+        }),
+        ("Conteúdo", {
+            "fields": ("conteudo",)
+        }),
+        ("Meta", {
+            "fields": ("ativo", "data_publicacao")
+        }),
+    )
+
+
 

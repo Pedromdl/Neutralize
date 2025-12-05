@@ -76,6 +76,7 @@ class Assinatura(models.Model):
         ('suspensa', 'Suspensa'),
         ('cancelada', 'Cancelada'),
         ('aguardando_pagamento', 'Aguardando Pagamento'),
+        ('expirada', 'Expirada'),  # ← ADICIONE ESTA LINHA
     ]
     
     METODO_PAGAMENTO_CHOICES = [
@@ -84,24 +85,13 @@ class Assinatura(models.Model):
         ('pix', 'PIX')
     ]
     
-    organizacao = models.OneToOneField(
-        'accounts.Organizacao',  # ← CORREÇÃO AQUI
-        on_delete=models.CASCADE, 
-        related_name='assinatura_pagamento',
-        null=True,
-        blank= True,
-    )
+    organizacao = models.ForeignKey('accounts.Organizacao', on_delete=models.CASCADE, related_name='assinatura_pagamento', null=True, blank= True,)
     plano = models.ForeignKey('PlanoPagamento', on_delete=models.PROTECT)
     provedor = models.ForeignKey('ProvedorPagamento', on_delete=models.PROTECT)
     
     # IDs externos
     id_cliente_externo = models.CharField(max_length=100, blank=True, null=True)
     id_assinatura_externo = models.CharField(max_length=100, blank=True, null=True)
-    
-        # 🔥 NOVO: Campos para cartão (após trial)
-    cartao_token = models.CharField(max_length=100, blank=True)  # Token seguro do Asaas
-    ultimos_digitos = models.CharField(max_length=4, blank=True)
-    bandeira_cartao = models.CharField(max_length=20, blank=True)
     
     # Datas
     data_inicio = models.DateTimeField(auto_now_add=True)
@@ -137,8 +127,19 @@ class Assinatura(models.Model):
     
     @property
     def precisa_pagamento(self):
-        """Verifica se precisa cadastrar método de pagamento"""
-        return self.status == 'aguardando_pagamento'
+        hoje = timezone.now().date()
+
+        # Se está cancelada, mas ainda dentro do período já pago → acesso liberado
+        if self.status == "cancelada" and hoje <= self.data_proximo_pagamento:
+            return False
+
+        # Trial expirado
+        if self.status == "trial" and not self.em_trial:
+            return True
+
+        # Status realmente bloqueantes
+        return self.status in ["aguardando_pagamento", "expirada"]
+
     
     def expirar_trial(self):
         """Muda status para aguardando pagamento quando trial expira"""
@@ -147,6 +148,39 @@ class Assinatura(models.Model):
             self.save()
             return True
         return False
+    
+    def atualizar_expiracao(self):
+        """Atualiza automaticamente o status da assinatura conforme as datas."""
+        hoje = timezone.now().date()
+
+        # 1️⃣ Trial expira sozinho
+        if self.status == "trial" and not self.em_trial:
+            self.status = "aguardando_pagamento"
+            self.save(update_fields=["status"])
+            return
+
+        # 2️⃣ Assinatura ativa → verificar se venceu
+        if self.status == "ativa":
+            if self.data_proximo_pagamento and hoje > self.data_proximo_pagamento:
+                # Passou da data sem pagar → bloqueia
+                self.status = "aguardando_pagamento"
+                self.save(update_fields=["status"])
+            return
+
+        # 3️⃣ Assinatura cancelada → manter acesso até data_proximo_pagamento
+        if self.status == "cancelada":
+            if self.data_proximo_pagamento and hoje > self.data_proximo_pagamento:
+                self.status = "expirada"
+                self.save(update_fields=["status"])
+            return
+
+        # 4️⃣ Suspensa → se passar data limite → expira
+        if self.status == "suspensa":
+            if self.data_proximo_pagamento and hoje > self.data_proximo_pagamento:
+                self.status = "expirada"
+                self.save(update_fields=["status"])
+            return
+
     
     def ativar_com_cartao(self, cartao_token, ultimos_digitos, bandeira):
         """Ativa assinatura com cartão após trial"""

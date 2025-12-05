@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/agenteIA/', include('agenteIA.urls')),
     path('api/', include('integracoes.urls')),
     path('api/', include('pagamentos.urls')),
+    path('api/auditoria/', include('auditoria.urls')),  # 🔐 LGPD Auditoria
 
     # Autenticação padrão (dj-rest-auth)
     # path('auth/', include('dj_rest_auth.urls')),

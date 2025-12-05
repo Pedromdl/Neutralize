@@ -49,7 +49,7 @@ DEBUG = True
 
 # os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1', '.ngrok-free.app']
 
 
 # Application definition
@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'agenteIA',
     'integracoes',
     'pagamentos',
+    'auditoria',  # 🔐 LGPD Auditoria
 ]
 
 #ACCOUNT_USER_MODEL_USERNAME_FIELD = None
@@ -152,6 +153,8 @@ MIDDLEWARE = [
     # 🔥 SEUS NOVOS MIDDLEWARES - DEPOIS da autenticação
     'accounts.middleware.TrialExpirationMiddleware',    # 1º - Expira trials
     'accounts.middleware.TrialAccessMiddleware',        # 2º - Bloqueia acesso
+    'auditoria.middleware.AuditoriaMiddleware',         # 🔐 LGPD - Auditoria geral
+    'auditoria.middleware.AuditoriaBearerTokenMiddleware',  # 🔐 LGPD - Token tracking
 ]
 
 INTERNAL_IPS = [
@@ -226,9 +229,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
-
-
-
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

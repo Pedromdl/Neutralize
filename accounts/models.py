@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField
+
 
 class Organizacao(models.Model):
     TIPO_PESSOA = [
@@ -22,19 +24,18 @@ class Organizacao(models.Model):
     tipo_pessoa = models.CharField(max_length=2, choices=TIPO_PESSOA, default='pf')
     tipo = models.CharField(max_length=20, choices=TIPO_ORGANIZACAO, default='autonomo')
 
-    cnpj = models.CharField(max_length=20, blank=True, null=True)
-    cpf = models.CharField(max_length=14, blank=True, null=True)
+    cnpj = EncryptedCharField(max_length=20, blank=True, null=True)
+    cpf = EncryptedCharField(max_length=14, blank=True, null=True)
 
     asaas_customer_id = models.CharField(max_length=50, blank=True, null=True)
     credit_card_token = models.CharField(max_length=255, blank=True, null=True)
 
     logo = models.ImageField(upload_to="organizacoes/logos/", blank=True, null=True)
 
-    endereco = models.CharField(max_length=255, blank=True)
-    numero = models.CharField(max_length=20, blank=True)
-    complemento = models.CharField(max_length=255, blank=True)
-    telefone = models.CharField(max_length=20, blank=True)
-
+    endereco = EncryptedCharField(max_length=255, blank=True, null=True) 
+    numero = EncryptedCharField(max_length=20, blank=True, null=True) 
+    complemento = EncryptedCharField(max_length=255, blank=True, null=True)  
+    telefone = EncryptedCharField(max_length=20, blank=True, null=True)
     data_criacao = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -66,10 +67,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)
-    cpf = models.CharField(max_length=11, blank=True)
-    address = models.CharField(max_length=255, blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    birth_date = models.DateField(null=True, blank=True)
+    cpf = EncryptedCharField(max_length=14, blank=True, null=True)
+    address = EncryptedCharField(max_length=255, blank=True, null=True)
+    phone = EncryptedCharField(max_length=20, blank=True, null=True)
+    birth_date = EncryptedDateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)

@@ -13,7 +13,7 @@ class PlanoPagamentoAdmin(admin.ModelAdmin):
 
 @admin.register(Assinatura)
 class AssinaturaAdmin(admin.ModelAdmin):
-    list_display = ['organizacao', 'plano', 'status', 'data_inicio', 'data_proximo_pagamento']
+    list_display = ['id', 'organizacao', 'plano', 'status', 'data_inicio', 'data_proximo_pagamento']
     list_filter = ['status', 'plano', 'metodo_pagamento']
     search_fields = ['organizacao__nome']
 
