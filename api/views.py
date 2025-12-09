@@ -32,7 +32,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.conf import settings
-from django.db.models import Max, OuterRef, Subquery
+from django.db.models import Max, OuterRef, Subquery, Q
 
 # ========================
 # IMPORTAÇÕES LOCAIS (MODELS & SERIALIZERS)
@@ -44,7 +44,7 @@ from .models import (
     Anamnese, Evento, Sessao
 )
 from .serializers import (
-    UsuárioSerializer, EstabilidadeSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
+    UsuarioBaseSerializer, UsuarioDetailSerializer, EstabilidadeSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, 
     PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer
 )
@@ -53,30 +53,130 @@ from .mixins import OrganizacaoFilterMixin
 
 class UsuárioViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     queryset = Usuário.objects.all()
-    serializer_class = UsuárioSerializer
+    # Remova o serializer_class fixo, vamos definir dinamicamente
     permission_classes = [IsAuthenticated]
     organizacao_field = "organizacao"
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
+    def get_serializer_class(self):
+        """
+        Escolhe dinamicamente o serializer baseado na ação:
+        - list: UsuarioBaseSerializer (rápido, sem dados sensíveis)
+        - retrieve: UsuarioBaseSerializer (padrão) ou Detail se solicitado
+        - create/update/partial_update: UsuarioDetailSerializer (todos os campos)
+        - Outras ações: UsuarioBaseSerializer
+        """
+        # Ação 'list' - SEMPRE usar base para performance
+        if self.action == 'list':
+            return UsuarioBaseSerializer
+        
+        # Ações que precisam de todos os campos
+        if self.action in ['create', 'update', 'partial_update']:
+            return UsuarioDetailSerializer
+        
+        # Ação 'retrieve' - verifica se quer detalhes completos
+        if self.action == 'retrieve':
+            # Verifica parâmetro de query ou header
+            request = self.request
+            if request:
+                # Opção 1: Via query parameter ?detalhes=completo
+                if request.query_params.get('detalhes') == 'completo':
+                    if request.user.has_perm('usuarios.view_sensitive_data'):
+                        return UsuarioDetailSerializer
+                
+                # Opção 2: Via header HTTP_X_DETAILS=full
+                if request.META.get('HTTP_X_DETAILS') == 'full':
+                    if request.user.has_perm('usuarios.view_sensitive_data'):
+                        return UsuarioDetailSerializer
+        
+        # Padrão para retrieve e outras ações
+        return UsuarioBaseSerializer
 
-        # Chamar log
+    def get_queryset(self):
+        """
+        Otimiza o queryset baseado na ação para melhor performance
+        """
+        queryset = super().get_queryset()
+        
+        # Para listas, seleciona apenas os campos necessários
+        if self.action == 'list':
+            # ONLY - seleciona apenas estes campos do banco
+            queryset = queryset.only(
+                'id', 
+                'nome', 
+                'email', 
+                'organizacao_id',
+            ).select_related('organizacao')  # Junta organização em uma query
+        
+        # Para retrieve com base serializer, também otimiza
+        elif self.action == 'retrieve' and self.get_serializer_class() == UsuarioBaseSerializer:
+            queryset = queryset.only(
+                'id', 'nome', 'email', 'organizacao_id'
+            ).select_related('organizacao')
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """
+        Lista otimizada - apenas dados básicos
+        """
+        response = super().list(request, *args, **kwargs)
+        
+        # Log de acesso à lista
         log_acesso(
             usuario=request.user,
-            paciente_id=getattr(instance, "id", None),  # ID do paciente ou usuário
+            paciente_id=0,
+            acao="listou",
+            campo="usuário",
+            request=request,
+            detalhes=f"Listou usuários (total: {len(response.data)})"
+        )
+        
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Determina o nível de detalhe para o log
+        serializer_class = self.get_serializer_class()
+        nivel_detalhe = "completos" if serializer_class == UsuarioDetailSerializer else "básicos"
+        
+        # Log de acesso
+        log_acesso(
+            usuario=request.user,
+            paciente_id=getattr(instance, "id", None),
             acao="visualizou",
             campo="usuário",
             request=request,
-            detalhes="Visualizou dados de usuário"
+            detalhes=f"Visualizou dados {nivel_detalhe} de usuário"
         )
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def create(self, request, *args, **kwargs):
+        """
+        Criação - usa serializer completo
+        """
+        response = super().create(request, *args, **kwargs)
+        
+        # Log de criação
+        if response.status_code == 201:  # Created
+            usuario_id = response.data.get('id')
+            log_acesso(
+                usuario=request.user,
+                paciente_id=usuario_id,
+                acao="criou",
+                campo="usuário",
+                request=request,
+                detalhes="Criou novo usuário"
+            )
+        
+        return response
+
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        # Chamar log
+        # Chamar log ANTES da atualização (para capturar dados antigos se necessário)
         log_acesso(
             usuario=request.user,
             paciente_id=getattr(instance, "id", None),
@@ -102,6 +202,53 @@ class UsuárioViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
         )
 
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def dados_completos(self, request, pk=None):
+        """
+        Endpoint específico para dados completos
+        URL: /api/usuarios/{id}/dados_completos/
+        """
+        usuario = self.get_object()
+        
+        # Verifica permissão específica para dados sensíveis
+        if not request.user.has_perm('usuarios.view_sensitive_data'):
+            return Response(
+                {"detail": "Você não tem permissão para visualizar dados sensíveis"},
+                status=403
+            )
+        
+        # Log específico para acesso a dados sensíveis
+        log_acesso(
+            usuario=request.user,
+            paciente_id=usuario.id,
+            acao="visualizou_sensivel",
+            campo="usuário",
+            request=request,
+            detalhes="Visualizou dados sensíveis completos do usuário via endpoint específico"
+        )
+        
+        serializer = UsuarioDetailSerializer(usuario, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def busca_rapida(self, request):
+        """
+        Endpoint para busca rápida - apenas id, nome, email
+        Útil para autocomplete, select boxes, etc.
+        """
+        termo = request.query_params.get('q', '')
+        
+        if termo:
+            queryset = self.get_queryset().filter(
+                Q(nome__icontains=termo) | Q(email__icontains=termo)
+            )[:20]  # Limita a 20 resultados
+        else:
+            queryset = self.get_queryset().none()
+        
+        serializer = UsuarioBaseSerializer(queryset, many=True)
+        
+        return Response(serializer.data)
 
 class ForcaMuscularViewSet(viewsets.ModelViewSet):
     queryset = ForcaMuscular.objects.all()

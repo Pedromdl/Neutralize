@@ -2,10 +2,21 @@ from rest_framework import serializers
 from .models import ( Usuário, ForcaMuscular, Mobilidade, Estabilidade, CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, Anamnese, 
                      Evento, Sessao)
 
-class UsuárioSerializer(serializers.ModelSerializer):
+class UsuarioBaseSerializer(serializers.ModelSerializer):
+    """Serializer MÍNIMO para listas e operações básicas"""
+    class Meta:
+        model = Usuário
+        fields = ['id', 'nome', 'organizacao']
+        # Apenas campos NÃO sensíveis e essenciais
+        read_only_fields = ['id', 'nome']
+
+class UsuarioDetailSerializer(serializers.ModelSerializer):
+    """Serializer COMPLETO apenas para operações que precisam de todos os dados"""
+    
     class Meta:
         model = Usuário
         fields = '__all__'
+
 
 class ForcaMuscularSerializer(serializers.ModelSerializer):
     movimento_forca_nome = serializers.CharField(source='movimento_forca.nome', read_only=True)
