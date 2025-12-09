@@ -1,5 +1,6 @@
 from django.conf import settings  # importe settings do Django
 from django.contrib.auth import get_user_model
+from django.http import Http404
 from django.utils import timezone
 from datetime import timedelta
 
@@ -17,13 +18,39 @@ from google.auth.transport import requests as google_requests
 
 from api.mixins import OrganizacaoFilterMixin
 
-from .serializers import CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
+from .serializers import OrganizacaoListSerializer, OrganizacaoSerializer , CustomUserSerializer, DocumentoLegalSerializer, AceiteDocumentoSerializer
 from .models import Organizacao, DocumentoLegal, CustomUser
+from api.models import Usuário  # ← MOVER PARA DENTRO DO MÉTODO
+
 from api.models import Usuário
 from pagamentos.models import PlanoPagamento, Assinatura, ProvedorPagamento
 from pagamentos.services.asaas_service import AsaasService
 
 User = get_user_model()
+
+class OrganizacaoDetailView(generics.RetrieveUpdateAPIView):
+    """
+    View para visualizar e atualizar os dados da organização do usuário atual.
+    Retorna 404 se o usuário não tiver organização associada.
+    """
+    serializer_class = OrganizacaoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_object(self):
+        # Verifica se o usuário tem organização associada
+        if not self.request.user.organizacao:
+            raise Http404("Este usuário não possui uma organização associada.")
+        return self.request.user.organizacao
+    
+    def update(self, request, *args, **kwargs):
+        # PATCH ou PUT parcial
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+    
 
 class CustomUserViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
     """
@@ -89,6 +116,101 @@ class UserListView(OrganizacaoFilterMixin, generics.ListAPIView):
     filter_backends = [filters.OrderingFilter]  # <— habilita ordenação
     ordering_fields = ['id', 'first_name', 'email', 'role']   # <— campos liberados
     ordering = ['id']  # ordenação padrão
+
+
+class RegisterPacienteView(APIView):
+    """
+    Registro de paciente NO APLICATIVO.
+    Somente pacientes que JÁ TEM email cadastrado na clínica podem criar conta.
+    """
+    
+    def post(self, request):
+        email = request.data.get("email", "").strip()
+        password = request.data.get("password", "").strip()
+        
+        # Validações básicas
+        if not email or not password:
+            return Response(
+                {"error": "Email e senha são obrigatórios."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verifica se já existe CustomUser com este email
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response(
+                {"error": "Este email já possui uma conta cadastrada."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+                
+        try:
+            # Busca o Usuário pelo email EXATO
+            usuario_existente = Usuário.objects.get(email__iexact=email)
+            
+            # Verifica se já tem CustomUser vinculado
+            if usuario_existente.user:
+                return Response(
+                    {"error": "Este email já possui uma conta ativa."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Separa nome completo em first_name e last_name
+            nome_parts = usuario_existente.nome.split(' ', 1)
+            first_name = nome_parts[0]
+            last_name = nome_parts[1] if len(nome_parts) > 1 else ""
+            
+            # Cria o CustomUser
+            custom_user = CustomUser.objects.create_user(
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role='paciente',
+                organizacao=usuario_existente.organizacao,
+                cpf=usuario_existente.cpf,
+                phone=usuario_existente.telefone,
+                birth_date=usuario_existente.data_de_nascimento,
+                # Endereço pode ser copiado se quiser
+                address=f"{usuario_existente.rua}, {usuario_existente.numero} - {usuario_existente.bairro}" 
+                        if usuario_existente.rua else ""
+            )
+            
+            # Vincula o CustomUser ao Usuário
+            usuario_existente.user = custom_user
+            usuario_existente.save()
+            
+            # Gera tokens JWT para login automático
+            refresh = RefreshToken.for_user(custom_user)
+            
+            return Response({
+                "success": True,
+                "message": "Conta criada com sucesso!",
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token)
+                },
+                "user": {
+                    "id": custom_user.id,
+                    "email": custom_user.email,
+                    "first_name": custom_user.first_name,
+                    "last_name": custom_user.last_name,
+                    "role": custom_user.role,
+                    "organizacao_id": custom_user.organizacao.id if custom_user.organizacao else None
+                }
+            }, status=status.HTTP_201_CREATED)
+            
+        except Usuário.DoesNotExist:
+            # Email não encontrado no cadastro da clínica
+            return Response({
+                "error": "Email não encontrado no cadastro da clínica. "
+                        "Entre em contato com sua clínica para verificar seu cadastro."
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            # Log do erro
+            print(f"Erro ao criar conta de paciente: {str(e)}")
+            return Response({
+                "error": "Erro interno ao processar o cadastro. Tente novamente mais tarde."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GoogleAuthView(APIView):
@@ -331,12 +453,3 @@ class RegisterAdminClinicaView(APIView):
                 "error": "Organização criada, mas falha ao registrar cliente no ASAAS.",
                 "detalhes": str(e)
             }, status=500)
-
-        # ==========================================================
-        # 🔹 ESTE RETURN FINAL FALTAVA!
-        # ==========================================================
-        return Response({
-            "mensagem": "Organização e assinatura trial criadas com sucesso!",
-            "organizacao_id": organizacao.id,
-            "usuario_id": user.id
-        }, status=201)

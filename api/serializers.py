@@ -80,7 +80,7 @@ class TesteDorSerializer(serializers.ModelSerializer):
 class PreAvaliacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreAvaliacao
-        fields = ['id', 'titulo', 'texto', 'clinica']
+        fields = ['id', 'titulo', 'texto', 'organizacao']
 
 class AnamneseSerializer(serializers.ModelSerializer):
     class Meta:

@@ -36,6 +36,8 @@ class PlanoPagamento(models.Model):
         ('starter', 'Starter - Autônomos'),
         ('professional', 'Professional - Clínicas'), 
         ('clinic', 'Clinic - Redes'),
+        ('mensal', 'Mensal'),
+        ('anual', 'Anual'),
     ]
     
     nome = models.CharField(max_length=100)

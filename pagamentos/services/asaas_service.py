@@ -120,7 +120,7 @@ class AsaasService:
         """
 
         # Escolhe qual plano será o trial (pode alterar aqui depois)
-        plano_trial = PlanoPagamento.objects.get(tipo="starter")
+        plano_trial = PlanoPagamento.objects.get(tipo="mensal")
         provedor = ProvedorPagamento.objects.get(tipo="asaas")
 
         assinatura = Assinatura.objects.create(
