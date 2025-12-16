@@ -5,7 +5,7 @@ from django.urls import path
 from .views import (
     UsuárioViewSet, ForcaMuscularViewSet, MobilidadeViewSet, EstabilidadeViewSet, TesteFuncaoViewSet,
     TodosTestesViewSet, TesteDorViewSet, PreAvaliacaoViewSet, DatasDisponiveisAPIView, AnamneseViewSet, 
-    EventoViewSet, SessaoViewSet, CategoriaTesteViewSet
+    EventoViewSet, SessaoViewSet, CategoriaTesteViewSet, InterpretarView, InsightsView, ChatPacienteView
 )
 
 router = DefaultRouter()
@@ -46,6 +46,10 @@ urlpatterns += [
     path('anamnese/<int:pk>/exportar-docx/', exportar_avaliacao_docx, name='exportar-docx'),
     path("relatorio/<int:paciente_id>/pdf/", gerar_relatorio_pdf, name="gerar_relatorio_pdf"),
     path("relatorio/<int:paciente_id>/visualizar/", visualizar_relatorio, name="visualizar_relatorio"),
+
+    path('interpretar/', InterpretarView.as_view(), name='interpretar'),
+    path('pacientes/<int:pk>/insights/', InsightsView.as_view(), name='insights'),
+    path('pacientes/<int:pk>/chat/', ChatPacienteView.as_view(), name='chat-paciente'),
 
 
 ]

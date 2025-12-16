@@ -44,6 +44,15 @@ class Usuário(models.Model):
     def __str__(self):
         return self.nome
     
+class IADataUsuario(models.Model):
+    paciente = models.OneToOneField(Usuário, on_delete=models.CASCADE, related_name='kb')
+    dados = models.JSONField(default=dict)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+
+    def __str__(self):
+        return f"KB - {self.usuario.nome}"
+    
 # Modelos de Dados
     
 class CategoriaTeste(models.Model):

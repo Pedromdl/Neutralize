@@ -41,14 +41,16 @@ from .permissions import IsProfissional, IsPaciente
 from .models import (
     RelatorioPublico, Usuário, Estabilidade, ForcaMuscular, Mobilidade, 
     CategoriaTeste, TodosTestes, TesteFuncao, TesteDor, PreAvaliacao, 
-    Anamnese, Evento, Sessao
+    Anamnese, Evento, Sessao, IADataUsuario
 )
 from .serializers import (
     UsuarioBaseSerializer, UsuarioDetailSerializer, EstabilidadeSerializer, ForcaMuscularSerializer, MobilidadeSerializer,
     CategoriaTesteSerializer, TodosTestesSerializer, TesteFuncaoSerializer, TesteDorSerializer, 
-    PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer
+    PreAvaliacaoSerializer, AnamneseSerializer, EventoSerializer, SessaoSerializer, IADataUsuarioSerializer
 )
 from .mixins import OrganizacaoFilterMixin
+from .services import interpretar_texto_e_salvar, build_insights_prompt, chamar_openai, build_chat_prompt
+
 
 
 class UsuárioViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
@@ -249,6 +251,65 @@ class UsuárioViewSet(OrganizacaoFilterMixin, viewsets.ModelViewSet):
         serializer = UsuarioBaseSerializer(queryset, many=True)
         
         return Response(serializer.data)
+    
+class InterpretarView(APIView):
+    def post(self, request):
+        paciente_id = request.data.get('paciente_id')
+        texto = request.data.get('texto')
+        tipo = request.data.get('tipo')
+
+        paciente = get_object_or_404(Usuário, id=paciente_id)
+
+        kb = getattr(paciente, 'kb', None)
+        if kb is None:
+            kb = IADataUsuario.objects.create(paciente=paciente)
+
+        # Agora SEMPRE roda
+        resultado = interpretar_texto_e_salvar(kb, texto, tipo)
+
+        return Response(resultado, status=status.HTTP_200_OK)
+
+
+class InsightsView(APIView):
+    def get(self, request, pk):
+        paciente = get_object_or_404(Usuário, id=pk)
+        kb = getattr(paciente, 'kb', None)
+        dados_kb = kb.dados if kb else {}
+
+
+        # juntar com dados quantitativos do paciente (força, mobilidade, testes)
+        contexto = {
+        'kb': dados_kb,
+        'metrics': {
+        # buscar no banco ou agregações já existentes
+        }
+        }
+
+
+        prompt = build_insights_prompt(contexto)
+        resposta = chamar_openai(prompt)
+        # parse e retornar
+        return Response({'insights_raw': resposta})
+    
+class ChatPacienteView(APIView):
+    def post(self, request, pk):
+        pergunta = request.data.get("pergunta")
+        if not pergunta:
+            return Response({"error": "Pergunta é obrigatória"}, status=400)
+
+        paciente = get_object_or_404(Usuário, id=pk)
+        kb = getattr(paciente, "kb", None)
+
+        if not kb or not kb.dados:
+            return Response({"error": "Nenhum dado interpretado encontrado para esse paciente"}, status=404)
+
+        prompt = build_chat_prompt(kb.dados, pergunta)
+        resposta = chamar_openai(prompt)
+
+        return Response({"resposta": resposta})
+
+    
+
 
 class ForcaMuscularViewSet(viewsets.ModelViewSet):
     queryset = ForcaMuscular.objects.all()
@@ -1327,7 +1388,6 @@ def usuario_publico(request, token):
         'cpf': usuario.cpf,
         'email': usuario.email,
         'telefone': usuario.telefone,
-        'endereço': usuario.endereço,
         'data_de_nascimento': usuario.data_de_nascimento,
         'user_id': usuario.user_id,
     }

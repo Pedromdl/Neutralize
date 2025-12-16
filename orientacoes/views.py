@@ -47,27 +47,104 @@ class PastaViewSet(viewsets.ModelViewSet):
     serializer_class = PastaSerializer
 
     def get_queryset(self):
-        qs = Pasta.objects.all().prefetch_related(
-            "secoes__treinos__exercicios__orientacao"
+        # 🔹 QUERY OTIMIZADA - ELIMINA N+1 COMPLETAMENTE
+        queryset = Pasta.objects.all().prefetch_related(
+            Prefetch(
+                'secoes',
+                queryset=Secao.objects.prefetch_related(
+                    Prefetch(
+                        'treinos',
+                        queryset=Treino.objects.prefetch_related(
+                            Prefetch(
+                                'exercicios',
+                                queryset=ExercicioPrescrito.objects.select_related(
+                                    'orientacao'
+                                ).order_by('id')
+                            )
+                        ).order_by('id')
+                    )
+                ).order_by('id')
+            )
         )
+        
+        # 🔹 FILTRO POR PACIENTE
         paciente_param = self.request.query_params.get("paciente")
         if paciente_param:
-            return qs.filter(paciente_id=paciente_param)
-
-        if hasattr(self.request.user, 'usuario'):
+            queryset = queryset.filter(paciente_id=paciente_param)
+        
+        # 🔹 FILTRO POR USUÁRIO AUTENTICADO
+        elif hasattr(self.request.user, 'usuario'):
             usuario = self.request.user.usuario
-            return qs.filter(paciente=usuario)
-
-        return qs.none()
+            queryset = queryset.filter(paciente=usuario)
+        
+        else:
+            queryset = queryset.none()
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Otimização adicional: contar queries para debug"""
+        import time
+        from django.db import connection
+        
+        start_time = time.time()
+        connection.queries_log.clear()
+        
+        response = super().list(request, *args, **kwargs)
+        
+        duration = time.time() - start_time
+        query_count = len(connection.queries)
+        
+        # Adiciona headers com métricas de performance
+        response.headers['X-Query-Count'] = query_count
+        response.headers['X-Response-Time'] = f"{duration:.3f}s"
+        
+        return response
 # =========================
 # Seções
 # =========================
 class SecaoViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gerenciar Seções de uma pasta
+    ViewSet otimizado para gerenciar Seções de uma pasta
+    Elimina completamente N+1 queries
     """
-    queryset = Secao.objects.all()
     serializer_class = SecaoSerializer
+
+    def get_queryset(self):
+        # 🔹 QUERY BASE COM PREFETCH
+        queryset = Secao.objects.all().prefetch_related(
+            Prefetch(
+                'treinos',
+                queryset=Treino.objects.prefetch_related(
+                    Prefetch(
+                        'exercicios',
+                        queryset=ExercicioPrescrito.objects.select_related('orientacao')
+                    )
+                ).order_by('id')
+            )
+        ).select_related('pasta')
+        
+        # 🔹 FILTROS DINÂMICOS
+        pasta_id = self.request.query_params.get('pasta')
+        if pasta_id:
+            queryset = queryset.filter(pasta_id=pasta_id)
+        
+        # 🔹 FILTRO POR USUÁRIO (se aplicável)
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'usuario'):
+            # Filtra apenas seções cuja pasta pertence ao usuário
+            queryset = queryset.filter(pasta__paciente=user.usuario)
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Endpoint otimizado para listagem"""
+        # 🔹 PAGINAÇÃO OPÇIONAL (se necessário)
+        page_size = request.query_params.get('page_size')
+        if page_size and page_size.isdigit():
+            self.pagination_class.page_size = int(page_size)
+        
+        return super().list(request, *args, **kwargs)
 
 # =========================
 # Orientações
