@@ -181,15 +181,65 @@ class BancodeExercicioViewSet(viewsets.ModelViewSet):
         # 🔹 Caso seja um OBJETO único
         return super().create(request, *args, **kwargs)
 
+from django.db import transaction
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status, viewsets
+from django.db import transaction
+
 class ExercicioPrescritoViewSet(viewsets.ModelViewSet):
     queryset = ExercicioPrescrito.objects.all()
     serializer_class = ExercicioPrescritoSerializer
 
     def get_queryset(self):
         treino_id = self.request.query_params.get('treino')
+        qs = self.queryset
         if treino_id:
-            return self.queryset.filter(treino_id=treino_id)
-        return self.queryset
+            qs = qs.filter(treino_id=treino_id)
+
+        # 🔹 Proteção padrão contra N+1
+        return qs.select_related('orientacao')
+
+    # =======================
+    # 🔹 BATCH CREATE (SEM N+1)
+    # =======================
+    @action(detail=False, methods=['post'])
+    def batch(self, request):
+        """
+        Criação em lote de exercícios prescritos
+        Espera uma LISTA de objetos ExercicioPrescrito
+        """
+        data = request.data
+
+        if not isinstance(data, list):
+            return Response(
+                {'detail': 'Formato inválido. Esperado uma lista.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = ExercicioPrescritoSerializer(
+            data=data,
+            many=True
+        )
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            exercicios = serializer.save()
+
+        # 🔹 REBUSCA com select_related para evitar N+1 na serialização
+        exercicios_qs = (
+            ExercicioPrescrito.objects
+            .filter(id__in=[e.id for e in exercicios])
+            .select_related('orientacao')
+        )
+
+        output = ExercicioPrescritoSerializer(exercicios_qs, many=True)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
 
 # =========================
 # Treinos Interativos

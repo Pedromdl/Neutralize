@@ -76,15 +76,10 @@ class AuditoriaMiddleware(MiddlewareMixin):
         return None
 
     def extrair_dados_request(self, request):
-        """Extrai dados do request body"""
-        try:
-            if request.method in ['POST', 'PUT', 'PATCH']:
-                if request.content_type == 'application/json':
-                    return request.body.decode('utf-8')
-                elif isinstance(request.POST, QueryDict):
-                    return json.dumps(dict(request.POST))
-        except Exception as e:
-            logger.error(f"Erro ao extrair dados do request: {e}")
+        """
+        NÃO lê body para evitar consumo do stream.
+        Payload deve ser auditado na view/serializer.
+        """
         return None
 
     def process_response(self, request, response):
