@@ -117,6 +117,17 @@ class UserListView(OrganizacaoFilterMixin, generics.ListAPIView):
     ordering_fields = ['id', 'first_name', 'email', 'role']   # <— campos liberados
     ordering = ['id']  # ordenação padrão
 
+class TotalPacientesView(OrganizacaoFilterMixin, APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    organizacao_field = "organizacao"
+
+    def get(self, request):
+        total = CustomUser.objects.filter(
+            organizacao=request.user.organizacao,
+            role="paciente"
+        ).count()
+        return Response({ "total": total })
+
 
 class RegisterPacienteView(APIView):
     """

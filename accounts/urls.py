@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     OrganizacaoDetailView, UserProfileView, UserListView, GoogleAuthView, LoginView,
     DocumentoLegalListView, RegistrarAceiteDocumentoView,
-    RegisterAdminClinicaView, CustomUserViewSet, RegisterPacienteView, 
+    RegisterAdminClinicaView, CustomUserViewSet, RegisterPacienteView, TotalPacientesView
 )
 
 router = DefaultRouter()
@@ -17,6 +17,7 @@ urlpatterns = [
     path('registro/', RegisterPacienteView.as_view(), name='registro-paciente'),  # <-- NOVA URL AQUI
     path('profile/', UserProfileView.as_view(), name='user-profile'),
     path('users/', UserListView.as_view(), name='user-list'),
+    path("users/total-pacientes/", TotalPacientesView.as_view(), name="total-pacientes"),
     path('google/', GoogleAuthView.as_view(), name='google-auth'),
     path('login/', LoginView.as_view(), name='login-trad'),
     path('registrar-clinica/', RegisterAdminClinicaView.as_view(), name='registro-clinica'),

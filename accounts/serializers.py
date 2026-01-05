@@ -1,4 +1,4 @@
-from djoser.serializers import UserCreateSerializer, UserSerializer
+from djoser.serializers import UserCreateSerializer, UserSerializer # type: ignore
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import DocumentoLegal, AceiteDocumento, Organizacao
@@ -75,10 +75,12 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 class CustomUserSerializer(UserSerializer):
     profile_picture_url = serializers.SerializerMethodField()
+    organizacao = OrganizacaoSerializer(read_only=True)
+
 
     class Meta(UserSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'photo_google', 'profile_picture_url', 'first_name', 'last_name', 'cpf', 'address', 'phone', 'birth_date', 'role', 'is_staff')
+        fields = ('id', 'email', 'photo_google', 'profile_picture_url', 'first_name', 'last_name', 'cpf', 'address', 'phone', 'birth_date', 'role', 'is_staff', 'organizacao')
             
     def get_profile_picture_url(self, obj):
         """Retorna a foto do Google ou a padrão"""
