@@ -35,7 +35,7 @@ class Organizacao(models.Model):
     asaas_customer_id = models.CharField(max_length=50, blank=True, null=True)
     credit_card_token = models.CharField(max_length=255, blank=True, null=True)
 
-    logo = models.ImageField(upload_to="organizacoes/logos/", blank=True, null=True)
+    logo = models.ImageField(upload_to="organizacoes/", blank=True, null=True)
 
     endereco = EncryptedCharField(max_length=255, blank=True, null=True) 
     numero = EncryptedCharField(max_length=20, blank=True, null=True) 

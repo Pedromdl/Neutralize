@@ -5,9 +5,6 @@ from django.conf import settings
 from accounts.models import CustomUser, Organizacao
 from pagamentos.models import Assinatura, PlanoPagamento, ProvedorPagamento, TransacaoPagamento, WebhookLog
 
-
-
-
 class AsaasService:
     """
     Serviço de integração com o ASAAS.

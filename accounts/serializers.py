@@ -17,7 +17,7 @@ class OrganizacaoSerializer(serializers.ModelSerializer):
         model = Organizacao
         fields = [
             'id', 'nome', 'tipo_pessoa', 'tipo', 'cnpj', 'cpf', 
-            'logo', 'logo_url', 'endereco', 'numero', 'complemento', 
+            'logo_url', 'endereco', 'numero', 'complemento', 
             'telefone', 'data_criacao', 'total_usuarios'
         ]
         read_only_fields = ['id', 'data_criacao', 'total_usuarios', 'logo_url']
@@ -26,18 +26,18 @@ class OrganizacaoSerializer(serializers.ModelSerializer):
         return obj.UsuarioOrganizacao.count()
     
     def get_logo_url(self, obj):
-        """Retorna URL da logo ou avatar padrão baseado no nome"""
-        if obj.logo:
-            # Se tem imagem, retorna URL completa
-            if hasattr(obj.logo, 'url'):
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(obj.logo.url)
-                return obj.logo.url
-            return str(obj.logo)
-        
-        # Fallback: gera avatar com iniciais
-        return ProfilePictureService.generate_default_avatar_for_organization(obj)
+        """
+        Retorna a URL absoluta da logo da organização ou null
+        """
+        if not obj.logo:
+            return None
+
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.logo.url)
+
+        return obj.logo.url
+
     
     def validate(self, data):
         tipo_pessoa = data.get('tipo_pessoa', self.instance.tipo_pessoa if self.instance else 'pf')

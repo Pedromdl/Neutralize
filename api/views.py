@@ -835,8 +835,9 @@ class SessaoViewSet(viewsets.ModelViewSet):
         if paciente_id:
             return Sessao.objects.filter(paciente_id=paciente_id)
         return Sessao.objects.all()  # Retorna tudo se não filtrar
+    from django.http import HttpResponse
+
     
-from django.http import HttpResponse
 from django.template.loader import render_to_string
 from weasyprint import HTML, CSS
 import base64, os
@@ -845,31 +846,38 @@ from .models import Usuário
 
 
 def gerar_relatorio_pdf(request, paciente_id):
-    paciente = Usuário.objects.get(id=paciente_id)
+    paciente = Usuário.objects.select_related("organizacao").get(id=paciente_id)
 
-    # Pega a data selecionada enviada pelo React (query param)
-    data_selecionada = request.GET.get('data')  # ex: '2025-11-09'
+    data_selecionada = request.GET.get('data')
 
-    # Caminho absoluto da logo
-    logo_path = os.path.join(settings.BASE_DIR, "static", "images", "logoletrapreta.png")
+    # ==========================
+    # 🔹 LOGO DA ORGANIZAÇÃO
+    # ==========================
+    logo_base64 = ""
 
-    # Converte a logo em base64
-    try:
-        with open(logo_path, "rb") as img_file:
-            logo_base64 = base64.b64encode(img_file.read()).decode("utf-8")
-    except FileNotFoundError:
-        logo_base64 = ""
+    organizacao = paciente.organizacao
+
+    if organizacao and organizacao.logo:
+        try:
+            logo_path = organizacao.logo.path  # caminho real no disco
+            with open(logo_path, "rb") as img_file:
+                logo_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+        except Exception as e:
+            print("Erro ao carregar logo da organização:", e)
+
+    # (opcional) fallback para logo estática
+    if not logo_base64:
+        try:
+            fallback_path = os.path.join(
+                settings.BASE_DIR, "static", "images", "logoletrapreta.png"
+            )
+            with open(fallback_path, "rb") as img_file:
+                logo_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+        except FileNotFoundError:
+            pass
 
     idade = calcular_idade(paciente.data_de_nascimento)
 
-    # ✅ Gera os gráficos com base na data selecionada
-    grafico_forca_base64 = gerar_grafico_forca_muscular(paciente, data_selecionada)
-    grafico_mobilidade_base64 = gerar_grafico_mobilidade(paciente, data_selecionada)
-    grafico_estabilidade_base64 = gerar_grafico_estabilidade(paciente, data_selecionada)
-    grafico_dor_base64 = gerar_grafico_dor(paciente, data_selecionada)
-    grafico_funcao_base64 = gerar_grafico_funcao(paciente, data_selecionada)
-
-    # Renderiza o HTML
     html_string = render_to_string("relatorio.html", {
         "logo_base64": logo_base64,
         "nome": paciente.nome,
@@ -878,23 +886,24 @@ def gerar_relatorio_pdf(request, paciente_id):
         "telefone": paciente.telefone,
         "data_de_nascimento": paciente.data_de_nascimento,
         "idade": idade,
-        "grafico_forca": grafico_forca_base64,
-        "grafico_mobilidade": grafico_mobilidade_base64,
-        "grafico_estabilidade": grafico_estabilidade_base64,
-        "grafico_dor": grafico_dor_base64,
-        "grafico_funcao": grafico_funcao_base64,
+        "grafico_forca": gerar_grafico_forca_muscular(paciente, data_selecionada),
+        "grafico_mobilidade": gerar_grafico_mobilidade(paciente, data_selecionada),
+        "grafico_estabilidade": gerar_grafico_estabilidade(paciente, data_selecionada),
+        "grafico_dor": gerar_grafico_dor(paciente, data_selecionada),
+        "grafico_funcao": gerar_grafico_funcao(paciente, data_selecionada),
     })
 
-    # Gera o PDF diretamente do HTML
-    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(
+    pdf_file = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri()
+    ).write_pdf(
         stylesheets=[CSS(string="""
             @page { size: A4; margin: 10mm; }
-            body { font-family: 'Arial', sans-serif; }
+            body { font-family: Arial, sans-serif; }
             img { max-width: 100%; height: auto; }
         """)]
     )
 
-    # Retorna o PDF como download
     response = HttpResponse(pdf_file, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="relatorio_{paciente.nome}.pdf"'
     return response

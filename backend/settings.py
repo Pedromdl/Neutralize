@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'integracoes',
     'pagamentos',
     'auditoria',  # 🔐 LGPD Auditoria
+    'crm',
 ]
 
 # ============================================================================
@@ -226,6 +227,11 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 
+GOOGLE_CONTACTS_CLIENT_ID = os.getenv("GOOGLE_CONTACTS_CLIENT_ID")
+GOOGLE_CONTACTS_CLIENT_SECRET = os.getenv("GOOGLE_CONTACTS_CLIENT_SECRET")
+GOOGLE_CONTACTS_REDIRECT_URI = os.getenv("GOOGLE_CONTACTS_REDIRECT_URI")
+
+
 # 🔒 Chave de criptografia para campos
 FIELD_ENCRYPTION_KEY = os.environ.get("ENCRYPTED_FIELDS_KEY", "").encode()
 
@@ -242,6 +248,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # ============================================================================
 # 12. INTERNACIONALIZAÇÃO

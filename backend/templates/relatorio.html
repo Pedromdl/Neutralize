@@ -127,7 +127,9 @@
   <div class="page">
     <header>
       <div class="brand">
-        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo Neutralize" />
+        {% if logo_base64 %}
+        <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo" style="height: 60px;" />
+        {% endif %}
         <div class="clinic">Avaliação Fisioterapêutica</div>
       </div>
       <div class="contact">

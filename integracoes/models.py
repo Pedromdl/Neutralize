@@ -18,3 +18,29 @@ class StravaAccount(models.Model):
 
     def __str__(self):
         return f"{self.firstname} {self.lastname} ({self.user.email})"
+    
+class GoogleContactsIntegration(models.Model):
+    user = models.OneToOneField('accounts.CustomUser', on_delete=models.CASCADE)
+    google_account_id = models.CharField(max_length=255, null=True, blank=True)
+    access_token = models.TextField()
+    refresh_token = models.TextField(null=True, blank=True)
+    token_expiry = models.DateTimeField()
+    connected_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    scope = models.TextField(null=True, blank=True)
+
+    @classmethod
+    def get_for_user(cls, user):
+        try:
+            return cls.objects.get(user=user)
+        except cls.DoesNotExist:
+            return None
+
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() >= self.token_expiry
+
+    def __str__(self):
+        return f"Google Contacts - {self.user}"
+
+

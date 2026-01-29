@@ -1,15 +1,28 @@
 import os
 from django.shortcuts import redirect
 import time
-from datetime import datetime, timezone
+from django.utils import timezone
+from datetime import timedelta
 from django.http import JsonResponse, HttpResponseRedirect
+from django.contrib.auth.decorators import login_required
+from urllib.parse import urlencode
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 import requests
-from .models import StravaAccount
+import secrets
+
+from .models import StravaAccount, GoogleContactsIntegration
 
 from .utils import get_valid_access_token
+
+import requests
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.conf import settings
+import os
+from dotenv import load_dotenv
 
 
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
@@ -103,7 +116,7 @@ def strava_callback(request):
 
 
     # 5️⃣ Redireciona de volta para o frontend
-    return redirect(f"http://localhost:5173/paciente/integracoes?strava_connected=1")
+    return redirect(f"http://localhost:5173/integracoes?strava_connected=1")
 
 
 
@@ -220,18 +233,226 @@ def strava_atividades(request):
 
     return Response(response.json())
 
+# ------------------------------------------------------------------
+# INÍCIO DO FLUXO OAUTH
+# ------------------------------------------------------------------
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def google_contacts_connect(request):
+    """
+    Inicia o fluxo OAuth para Google Contacts usando state para identificar usuário.
+    """
+
+    # 🔐 token aleatório para proteger o state
+    random_token = secrets.token_urlsafe(16)
+
+    # Aqui pegamos o user_id via query param, porque request.user NÃO funciona com AllowAny
+    # Ou você poderia passar o JWT e decodificar
+    user_token = request.GET.get("token")
+    if not user_token:
+        return JsonResponse({"error": "token missing"}, status=400)
+
+    # Você precisaria decodificar o JWT para pegar user_id
+    import jwt
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        payload = jwt.decode(user_token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload["user_id"]
+    except Exception:
+        return JsonResponse({"error": "invalid token"}, status=401)
+
+    # state = "userID:randomToken"
+    state = f"{user_id}:{random_token}"
+
+    # opcional: salvar só o random token na sessão pra validar depois
+    request.session["google_contacts_oauth_state_token"] = random_token
+
+    params = {
+        "client_id": settings.GOOGLE_CONTACTS_CLIENT_ID,
+        "redirect_uri": settings.GOOGLE_CONTACTS_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "https://www.googleapis.com/auth/contacts.readonly",
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+    }
+
+    oauth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
+    return redirect(oauth_url)
+
+
+# ------------------------------------------------------------------
+# CALLBACK DO GOOGLE
+# ------------------------------------------------------------------
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def google_contacts_callback(request):
+    code = request.GET.get("code")
+    state = request.GET.get("state")  # vem como "userID:randomToken"
+
+    if not code or not state:
+        return JsonResponse({"error": "missing code or state"}, status=400)
+
+    try:
+        user_id_str, random_token = state.split(":")
+        user_id = int(user_id_str)
+    except Exception:
+        return JsonResponse({"error": "invalid state"}, status=400)
+
+    # ✅ validar token aleatório com o que está salvo na sessão
+    saved_token = request.session.get("google_contacts_oauth_state_token")
+    if saved_token != random_token:
+        return JsonResponse({"error": "invalid oauth state"}, status=400)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "user not found"}, status=404)
+
+    # continua o fluxo normal: trocar code por access_token e salvar no banco
+
+    # -----------------------------
+    # 4. Troca code por tokens
+    # -----------------------------
+    token_url = "https://oauth2.googleapis.com/token"
+
+    data = {
+        "client_id": settings.GOOGLE_CONTACTS_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CONTACTS_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": settings.GOOGLE_CONTACTS_REDIRECT_URI,
+    }
+
+    response = requests.post(
+        token_url,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=10,
+    )
+
+    token_data = response.json()
+
+    if "access_token" not in token_data:
+        return redirect(
+            f"{settings.FRONTEND_URL}/integracoes?google_connected=1"
+        )
+    # -----------------------------
+    # 5. Calcula expiração do token
+    # -----------------------------
+    expires_at = timezone.now() + timedelta(
+        seconds=token_data["expires_in"]
+    )
+
+    # -----------------------------
+    # 6. Salva / atualiza integração
+    # -----------------------------
+    GoogleContactsIntegration.objects.update_or_create(
+        user=user,
+        defaults={
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data.get("refresh_token"),
+            "token_expiry": expires_at,
+            "scope": token_data.get("scope"),
+        }
+    )
+
+    # -----------------------------
+    # 7. Limpa dados sensíveis da sessão
+    # -----------------------------
+    request.session.pop("google_contacts_oauth_state", None)
+    request.session.pop("google_contacts_user_id", None)
+
+    return redirect(f"{settings.FRONTEND_URL}/integracoes?google_connected=1")
+
+from .services.google_contacts import GoogleContactsService
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def google_contacts_list(request):
+    """
+    Retorna contatos do Google com paginação
+    """
+    try:
+        page_token = request.GET.get("page_token")
+
+        service = GoogleContactsService(request.user)
+        data = service.fetch_contacts(page_token=page_token)
+
+        return Response({
+            "connections": data.get("connections", []),
+            "nextPageToken": data.get("nextPageToken"),
+        })
+
+    except GoogleContactsIntegration.DoesNotExist:
+        return Response(
+            {"error": "Conta Google não conectada"},
+            status=400
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=500
+        )
+    
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def google_contacts_disconnect(request):
+    try:
+        integration = GoogleContactsIntegration.objects.get(user=request.user)
+
+        # 🔒 (Opcional, recomendado) Revogar token no Google
+        if integration.access_token:
+            try:
+                requests.post(
+                    "https://oauth2.googleapis.com/revoke",
+                    params={"token": integration.access_token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=5,
+                )
+            except Exception:
+                pass  # falha na revogação não deve quebrar o fluxo
+
+        # 🗑 Remove integração local
+        integration.delete()
+
+        return Response({"disconnected": True})
+
+    except GoogleContactsIntegration.DoesNotExist:
+        return Response({"disconnected": False, "detail": "Conta Google não conectada"})
+    
+class GoogleContactsStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        integration = GoogleContactsIntegration.get_for_user(request.user)
+
+        if not integration:
+            return Response({
+                "conectado": False
+            })
+
+        # opcional: considerar token expirado como desconectado
+        if integration.is_expired():
+            return Response({
+                "conectado": False,
+                "motivo": "token_expirado"
+            })
+
+        return Response({
+            "conectado": True
+        })
+    
+
 
 
 
 
 # INTEGRAÇÃO INSTAGRAM
-
-import requests
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.conf import settings
-import os
-from dotenv import load_dotenv
 
 # Carrega o .env
 load_dotenv()  # só precisa se não estiver carregando em settings.py

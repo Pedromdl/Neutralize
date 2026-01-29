@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/', include('financeiro.urls')),
     path('api/agenteIA/', include('agenteIA.urls')),
     path('api/', include('integracoes.urls')),
+    path('api/', include('crm.urls')),
     path('api/', include('pagamentos.urls')),
     path('api/auditoria/', include('auditoria.urls')),  # 🔐 LGPD Auditoria
 
@@ -33,3 +34,5 @@ if settings.DEBUG:
     ] + urlpatterns
 
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

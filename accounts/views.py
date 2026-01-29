@@ -5,6 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+from flask import logging
 from rest_framework import generics, permissions, filters, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -360,11 +361,17 @@ class RegistrarAceiteDocumentoView(generics.CreateAPIView):
         def perform_create(self, serializer):
             serializer.save(usuario=self.request.user, data_aceite=timezone.now())
 
-            
+import logging
+from django.db import transaction, IntegrityError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
+
 class RegisterAdminClinicaView(APIView):
     """
     Cria uma organização e um CustomUser administrador.
-    Agora sem uso do AssinaturaService.
+    Integração ASAAS é tentada, mas falha não bloqueia criação.
     """
 
     def post(self, request):
@@ -374,93 +381,74 @@ class RegisterAdminClinicaView(APIView):
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
 
-        # Validação dos campos obrigatórios
+        # Validação básica
         if not all([email, nome_organizacao, password, first_name, last_name]):
             return Response({"error": "Todos os campos são obrigatórios."}, status=400)
 
-        # Valida email
         from django.core.validators import validate_email
         from django.core.exceptions import ValidationError
-        from django.db import IntegrityError
 
         try:
             validate_email(email)
         except ValidationError:
             return Response({"error": "Email inválido."}, status=400)
 
-        # Valida senha mínima
         if len(password) < 6:
             return Response({"error": "A senha deve ter pelo menos 6 caracteres."}, status=400)
 
-        # Checa duplicidade de email
         if CustomUser.objects.filter(email__iexact=email).exists():
             return Response({"error": "Email já cadastrado."}, status=400)
 
-        # ==========================================================
-        # 🔹 Detecta tipo de pessoa (CPF ou CNPJ)
-        # ==========================================================
+        # Detecta CPF ou CNPJ
         documento = request.data.get("documento", "").strip()
-        documento_limpo = "".join(filter(str.isdigit, documento))  # remove pontos, traços, barras
+        documento_limpo = "".join(filter(str.isdigit, documento))
 
         if len(documento_limpo) == 11:
             tipo_pessoa = "pf"
             cpf = documento_limpo
             cnpj = None
-
         elif len(documento_limpo) == 14:
             tipo_pessoa = "pj"
             cpf = None
             cnpj = documento_limpo
-
         else:
-            return Response(
-                {"error": "Documento inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos)."},
-                status=400
-            )
+            return Response({"error": "Documento inválido."}, status=400)
 
-        # ==========================================================
-        # 🔹 Cria organização com tipo_pessoa + CPF/CNPJ
-        # ==========================================================
+        # ===========================================
+        # Criação em transação atômica
+        # ===========================================
         try:
-            organizacao = Organizacao.objects.create(
-                nome=nome_organizacao,
-                tipo_pessoa=tipo_pessoa,
-                cpf=cpf,
-                cnpj=cnpj
-            )
+            with transaction.atomic():
+                organizacao = Organizacao.objects.create(
+                    nome=nome_organizacao,
+                    tipo_pessoa=tipo_pessoa,
+                    cpf=cpf,
+                    cnpj=cnpj
+                )
+
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    role="admin",
+                    organizacao=organizacao,
+                    is_staff=True,
+                    password=password
+                )
+
+                # ===========================================
+                # Integração ASAAS (falha não bloqueia)
+                # ===========================================
+                try:
+                    provedor = ProvedorPagamento.objects.get(tipo="asaas")
+                    asaas = AsaasService(provedor)
+                    asaas.criar_cliente(organizacao)
+                    asaas.criar_assinatura_trial(organizacao)
+                except Exception as e:
+                    # Apenas loga o erro internamente
+                    logger.error(f"[ASAAS] Falha ao criar cliente ou assinatura para {organizacao.nome}: {e}")
+
         except IntegrityError:
-            return Response(
-                {"error": "Já existe uma organização com esse nome."},
-                status=400
-            )
+            return Response({"error": "Já existe uma organização com esse nome."}, status=400)
 
-        # Cria usuário admin
-        user = CustomUser.objects.create_user(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            role="admin",
-            organizacao=organizacao,
-            is_staff=True,
-            password=password
-        )
-        # ==========================================================
-        # 🔹 INTEGRAÇÃO ASAAS: Criar cliente
-        # ==========================================================
-        try:
-            provedor = ProvedorPagamento.objects.get(tipo="asaas")
-
-            # AsaasService correto (com os argumentos certos)
-            asaas = AsaasService(provedor)
-
-            # Cria cliente no ASAAS
-            asaas.criar_cliente(organizacao)
-
-            # Cria assinatura trial local
-            asaas.criar_assinatura_trial(organizacao)
-
-        except Exception as e:
-            return Response({
-                "error": "Organização criada, mas falha ao registrar cliente no ASAAS.",
-                "detalhes": str(e)
-            }, status=500)
+        return Response({"message": "Clínica criada com sucesso."}, status=201)
